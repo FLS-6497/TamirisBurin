@@ -1,0 +1,108 @@
+---
+title: "Aula 3"
+author: "tamiris burin"
+date: "2022-08-31"
+output: html_document
+---
+
+```{r}
+library("mlr3")
+task = tsk("iris")
+learner = lrn("classif.rpart")
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula3/PKAP_raw_data.csv"
+dados1 <- readr::read_csv(link)
+```
+
+```{r}
+table(dados$officer_present)
+```
+
+#Graficos de frequencia
+```{r}
+dados2 <- dados1 %>%
+  select(race, contains("officer_")) %>% 
+  mutate(race = ifelse(race =="Black", 1,0)) %>% 
+  mutate(officer_present = ifelse(officer_present == "Unknown", 1,0)) %>% 
+  mutate(officer_race = case_when(
+    officer_race == "White" ~ 1,
+    officer_race == "White,Unknown" ~ 1,
+    officer_race == "White, Unknown" ~ 1,
+    T ~ 0)) %>% 
+  mutate(across(c(officer_name, officer_years, officer_undercover, officer_offduty, officer_personal), ~ ifelse(.x == "Yes", 1, 0))) %>% 
+  mutate(officer_gender = ifelse(str_detect(officer_gender, "Female"), 1,0)) %>%
+  select(-officer_fire) %>% 
+  na.omit()
+```
+
+```{r}
+dados2 %>% 
+  pivot_longer(-race) %>% 
+  mutate(race = ifelse(race == 1, "Black", "White")) %>% 
+  group_by(name,race) %>% 
+  summarise(n= sum(value, na.rm = T)) %>% 
+  ggplot(aes(x=race, y = n))+
+  geom_col()+
+  facet_wrap(~ name,scales = "free")
+```
+
+```{r}
+library(mlr3learners)
+library(mlr3verse)
+# Treina o modelo (Toda vez que começamos uma tarefa cologamos um algorítimo, que fica salvo. O $ é o indexador, e depois a tarefa. A tarefa vem com a receita dos dados)
+```
+
+
+```{r}
+task <- as_task_classif(race ~ ., data = dados2)
+learner <- lrn("classif.log_reg")
+```
+
+```{r}
+learner$train(task)
+```
+
+
+```{r}
+# Avalia predicoes
+pred <- learner$predict(task)
+pred$confusion
+measure <- msr("classif.acc")
+pred$score(measure)
+```
+
+```{r}
+#cria um discionario de observações de treino e teste
+split <- partition(task, ratio = 0.7)
+```
+
+```{r}
+#ensina o modelo
+learner <- lrn("classif.log_reg")
+learner$train(task,split$train)
+```
+
+```{r}
+#mensura a tabela de confusão
+measure <- msr("classif.acc")
+pred$score(measure)
+```
+
+#depois cria uma função para encapsular tudo, depois controlar o tamanho da base, depois vamos mudar o classificador, para a comparação de modelos não é  muito
+
+#temos que comparar os modelos na mesma base de treino. o ideal é comparar os algorítmos na mesma base de treino.
+
+```{r}
+data = data.frame(
+  y = c(task$truth(split$train), task$truth(split$test)),
+  split = rep(c("train", "predict"), lengths(split))
+)
+boxplot(y ~ split, data = data)
+```
+
