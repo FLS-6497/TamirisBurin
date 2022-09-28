@@ -94,9 +94,7 @@ measure <- msr("classif.acc")
 pred$score(measure)
 ```
 
-#depois cria uma função para encapsular tudo, depois controlar o tamanho da base, depois vamos mudar o classificador, para a comparação de modelos não é  muito
-
-#temos que comparar os modelos na mesma base de treino. o ideal é comparar os algorítmos na mesma base de treino.
+#depois cria-se uma função para encapsular tudo, controlar o tamanho da base, e mudar o classificador para a comparação de modelos. Temos que comparar os modelos na mesma base de treino. O ideal é comparar os algorítmos na mesma base de treino.
 
 ```{r}
 data = data.frame(
