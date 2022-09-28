@@ -17,8 +17,7 @@ link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Pro
 dados <- readr::read_csv(link)
 ```
 
-# Lempeza dos dados
-
+# Limpeza dos dados
 ```{r}
 dados <- dados %>% 
 select_if(is.numeric)
@@ -44,10 +43,6 @@ resultados <- resample(tsk, learner, resampling)
 ```{r}
 measure <- msrs(c("regr.mae", "regr.mse"))
 res <- resultados$score(measure, ids = FALSE, predict_sets = "test")
-```
-
-```{r}
-res
 ```
 
 # Cria uma função. Pedimos para o pc executar uma receita
@@ -97,7 +92,8 @@ x <- roda_modelo("regr.lm")
 y <- roda_modelo ("regr.glmnet")
 ```
 
-# c) Função
+#c) Função
+Crie uma função que rode esse workflow inteiro e retorne apenas uma métrica de validação. Rode essa função 100 vezes e reporte os resultados (como quiser, com gráfico ou outros).
 ```{r}
 rep <- numeric(100)
 for (i in 1:length(rep)) {
@@ -105,52 +101,64 @@ rep[i] <- roda_modelo("regr.lm")
 }
 ```
 
-# d) Ajuste
-# Avalia predições
+#d) Ajuste
+Avalia predições.
+Usando a função anterior, teste diferentes combinações de variáveis no modelo para achar um que tenha uma boa performance.
 ```{r}
 measure <-  msr("regr.mae")
 res <- resultados$score(measure, predict_sets = "test")
 as.numeric(res[1,9])
 ```
-#2 Regularização
 
+#2) Regularização
+Para esse exercício, serão necessários os seguintes algoritmos:
 ```{r}
 learner <- lrn("regr.lm") # Lasso
 # Ou
 learner2 <- lrn("regr.glmnet", alpha = 1) # RIDGE
 ```
 
-# Funcionamento do Map é de passar algo para o map, e ele passa as funções uma por uma e vai...
+#a) Regularização
+Funcionamento do Map é de passar algo para o map, e ele passa as funções uma por uma e vai.
 ```{r}
 1:5 %>% 
   map_dbl(~ roda_modelo_com_alpha("regr.glmnet", alpha =1))
 ```
 
+#b) Funções
+Crie uma função para estimar LASSO e Ridge e compare os resultados de 100 execuções.
 ```{r}
 c("regr.lm", "regr.glmnet") %>%
   map_dbl(~ roda_modelo(.x))
 ```
 
-# Define estratégia de separação da amostra
+OBS. Lembrando que isso inclui:
+Selecionar a tarefa e o modelo
+```{r}
+tsk <- as_task_regr(votos ~ pib_total, data = elei18)
+learner <- lrn("regr.lm")
+```
+Definir estratégia de separação da amostra:
 ```{r}
 resampling <- rsmp("holdout", ratio = 0.7)
 resampling$instantiate(tsk)
 ```
-
-# Treina o modelo
+Treina o modelo:
 ```{r}
 resultados <-  resample(tsk, learner, resampling)
 resultados2 <- resample(tsk, learner2, resampling)
 ```
-
-# Avalia predições
+Avalia predições:
 ```{r}
 measure <-  msr("regr.mae")
 res <- resultados$score(measure, predict_sets = "test")
 res2 <- resultados$score(measure, predict_sets = "test")
 ```
 
-#3 Regulação e transformação de preditores
+
+#3) Regulação e transformação de preditores
+Para este exercício, será necessário carregar os seguintes dados com resultados do segundo turno de 2018 por município no Brasil:
+
 ```{r}
 link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula4/eleicoes_mun_2018.csv"
 elei18 <- readr::read_csv2(link)
@@ -177,8 +185,6 @@ elei18 %>%
   geom_smooth(se = F)
 ```
 
-#Calcular o z score, pega cada, divide pela média e pelo desvio padrão. Aí fica normalizada. 
-
 #c) Modelos
 Rode modelos lineares, com e sem regularização, para tentar predizer a votação de Bolsonaro nos municípios usando variáveis como regiao, semiarido, capital, pib_total.
 
@@ -191,8 +197,18 @@ measure <-  msr ("regr.rmse")
 resultados$score(measure, predict_sets = "test")
 ```
 
-regiao, semiárido, estado, calcular a variável de comparecimento. Diferentes bases de treino. Usem, criem e tranformem variáveis.
-
 #d) Transformações
 Transforme a variável pib_total para que ela fique estandardizada (vale ser criativo e explorar outras variáveis do banco).
-já deu a resposta. Transformar em log, antes, a variável.
+
+```{r}
+elei18 %>%
+  group_by(pibpc, semiarido, votos) %>% 
+  summarise(n= sum(votos, na.rm = T)) %>% 
+  ggplot(aes(x=pibpc, y = votos))+
+  geom_col()+
+  facet_wrap(~ semiarido,scales = "free")
+```
+
+Obs. Para padronizar (calcular o z score), pego a variável, subtraio a média e divido pelo desvio padrão.
+Posso fazer por regiao (semiárido), estado, calcular a variável de comparecimento... para gerar diferentes bases de treino.
+
