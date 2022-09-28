@@ -1,0 +1,198 @@
+---
+title: "Aula 4"
+output: html_document
+date: "2022-09-14"
+---
+
+```{r}
+library("mlr3verse")
+task = tsk("iris")
+library(tidyverse)
+library(glmnet)
+```
+
+# carrega os dados
+```{r}
+link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+dados <- readr::read_csv(link)
+```
+
+# Lempeza dos dados
+
+```{r}
+dados <- dados %>% 
+select_if(is.numeric)
+```
+
+# Seleciona a tarefa e o modelo
+```{r}
+tsk <- as_task_regr(humidity ~ maximum_temprature + wind_speed, data = dados)
+learner <- lrn("regr.lm")
+```
+
+#Define estratégia de separação
+```{r}
+resampling <- rsmp("holdout", ratio = 0.7)
+```
+
+# Treina o modelo
+```{r}
+resultados <- resample(tsk, learner, resampling)
+```
+
+# Avalia predições (usa o médoto score e calcula uma métrica)(se eu quiser mudar para a variável treino, eu posso colocar train)
+```{r}
+measure <- msrs(c("regr.mae", "regr.mse"))
+res <- resultados$score(measure, ids = FALSE, predict_sets = "test")
+```
+
+```{r}
+res
+```
+
+# Cria uma função. Pedimos para o pc executar uma receita
+```{r}
+roda_modelo <- function() {
+  tsk <- as_task_regr(humidity ~ maximum_temprature + wind_speed, data = dados)
+learner <- lrn("regr.lm")
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+measure <- msrs(c("regr.mse", "regr.rmse"))
+res <- resultados$score(measure, ids = FALSE, predict_sets = "test")
+as.numeric(res[1, 7])
+}
+```
+
+# Dentro da função, eu coloco um coringa chamado algoritmo. Isso coloca um parâmetro para que o usuário automatize 
+```{r}
+roda_modelo <- function(algoritmo) {
+  tsk <- as_task_regr(humidity ~ maximum_temprature + wind_speed, data = dados)
+learner <- lrn(algoritmo)
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+measure <- msrs(c("regr.mse", "regr.rmse"))
+res <- resultados$score(measure, ids = FALSE, predict_sets = "test")
+as.numeric(res[1, 7])
+}
+```
+
+# Aqui o alpha vai decidir entre os modelos ridge ou LASSO, e colocamos no argumento de lrn o alpha igual a alpha para especificar ao R, esse detalhe do alpha
+```{r}
+roda_modelo_com_alpha <- function(algoritmo = "regr.glmnet", alpha) {
+  tsk <- as_task_regr(humidity ~ maximum_temprature + wind_speed, data = dados)
+learner <- lrn(algoritmo, alpha=alpha)
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+measure <- msrs(c("regr.mse", "regr.rmse"))
+res <- resultados$score(measure, ids = FALSE, predict_sets = "test")
+as.numeric(res[1, 7])
+}
+```
+
+```{r}
+x <- roda_modelo("regr.lm")
+```
+
+```{r}
+y <- roda_modelo ("regr.glmnet")
+```
+
+# c) Função
+```{r}
+rep <- numeric(100)
+for (i in 1:length(rep)) {
+rep[i] <- roda_modelo("regr.lm")
+}
+```
+
+# d) Ajuste
+# Avalia predições
+```{r}
+measure <-  msr("regr.mae")
+res <- resultados$score(measure, predict_sets = "test")
+as.numeric(res[1,9])
+```
+#2 Regularização
+
+```{r}
+learner <- lrn("regr.lm") # Lasso
+# Ou
+learner2 <- lrn("regr.glmnet", alpha = 1) # RIDGE
+```
+
+# Funcionamento do Map é de passar algo para o map, e ele passa as funções uma por uma e vai...
+```{r}
+1:5 %>% 
+  map_dbl(~ roda_modelo_com_alpha("regr.glmnet", alpha =1))
+```
+
+```{r}
+c("regr.lm", "regr.glmnet") %>%
+  map_dbl(~ roda_modelo(.x))
+```
+
+# Define estratégia de separação da amostra
+```{r}
+resampling <- rsmp("holdout", ratio = 0.7)
+resampling$instantiate(tsk)
+```
+
+# Treina o modelo
+```{r}
+resultados <-  resample(tsk, learner, resampling)
+resultados2 <- resample(tsk, learner2, resampling)
+```
+
+# Avalia predições
+```{r}
+measure <-  msr("regr.mae")
+res <- resultados$score(measure, predict_sets = "test")
+res2 <- resultados$score(measure, predict_sets = "test")
+```
+
+#3 Regulação e transformação de preditores
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula4/eleicoes_mun_2018.csv"
+elei18 <- readr::read_csv2(link)
+```
+
+#a) Transformações básicas
+Crie uma nova variável que indique o percentual de votos válidos de Bolsonaro (dica: basta dividir votos_bolsonaro_2t_2018 por votos_validos_2t_2018)
+
+```{r}
+elei18 <- elei18 %>% mutate(votos = votos_bolsonaro_2t_2018/aptos_2018)
+```
+
+#b) Exploração
+Crie alguns gráficos pra explorar a relação entre a votação de Bolsonaro e algumas das variáveis do banco (faça como quiser, e quantos gráficos quiser).
+
+```{r}
+elei18 <- elei18 %>%
+  mutate(pibpc = pib_total / aptos_2018) %>% 
+  mutate(pibpc = scale(pibpc)) 
+
+elei18 %>% 
+  ggplot(aes(x= pibpc, y = votos))+
+  geom_point(alpha = 0.3)+
+  geom_smooth(se = F)
+```
+
+#Calcular o z score, pega cada, divide pela média e pelo desvio padrão. Aí fica normalizada. 
+
+#c) Modelos
+Rode modelos lineares, com e sem regularização, para tentar predizer a votação de Bolsonaro nos municípios usando variáveis como regiao, semiarido, capital, pib_total.
+
+```{r}
+tsk <- as_task_regr(votos ~ pibpc, data = elei18)
+learner <- lrn ("regr.lm")
+reseampling <- rsmp ("holdout", ratio = 0.7)
+resultados <- resample (tsk, learner, resampling)
+measure <-  msr ("regr.rmse")
+resultados$score(measure, predict_sets = "test")
+```
+
+regiao, semiárido, estado, calcular a variável de comparecimento. Diferentes bases de treino. Usem, criem e tranformem variáveis.
+
+#d) Transformações
+Transforme a variável pib_total para que ela fique estandardizada (vale ser criativo e explorar outras variáveis do banco).
+já deu a resposta. Transformar em log, antes, a variável.
