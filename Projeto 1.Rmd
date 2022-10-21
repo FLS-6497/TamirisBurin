@@ -1,0 +1,80 @@
+---
+title: "Projeto 1"
+author: "Tamiris Burin"
+date: "2022-10-21"
+output: html_document
+---
+
+
+```{r}
+library(devtools)
+library(tidyverse)
+library(mlr3verse)
+library(igraph)
+library(quanteda)
+library(janitor)
+library(tibble)
+library(earth)
+library(mlr3extralearners)
+library(quanteda)
+
+devtools::install_github("https://github.com/mlr-org/mlr3extralearners")
+```
+
+
+
+```{r}
+link <- "https://github.com/FLS-6497/datasets/blob/main/projeto1/discursos_pres_internacionais.csv?raw=true"
+discursos <- readr::read_csv2(link) %>% 
+  mutate(id = row_number())
+```
+
+```{r}
+
+modelo_tami1 <- function(df, var) {
+  
+# 1) Cria um corpus
+cps <- corpus(discursos, text_field = "discurso")
+
+# 2) Tokenizacao
+tks <- cps %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>%
+  tokens_remove(min_nchar = 4, pattern = stopwords("pt")) %>% 
+  tokens_wordstem("pt") 
+
+# 3) Criacao de uma matriz bag-of-words
+tks_dfm <- dfm(tks) %>%
+  dfm_trim(min_docfreq = 0.05, docfreq_type = "prop")
+
+# 4 e Etapa final) Transformar o resultado para tibble para o mlr3
+tks_dfm <- tks_dfm %>%
+  as.matrix() %>%
+  as_tibble() %>% 
+  janitor::clean_names() %>% 
+  mutate_all(as.numeric)
+
+#Resutado da matri
+tks_dfm$y <- discursos$presidente
+return(list(df = discursos, bow = tks_dfm))
+
+#Predição
+tsk <- as_task_classif(y ~.,data = bow)
+learner <- lrn("classif.naive_bayes")
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+
+resultados$prediction()
+
+resultados$score(msr("classif.fbeta"))
+
+}
+
+modelo_tami1()
+
+```
+
+
+
+
+
