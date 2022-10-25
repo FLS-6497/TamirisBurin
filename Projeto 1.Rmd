@@ -1,11 +1,7 @@
 ---
 title: "Projeto 1"
 author: "Tamiris Burin"
-date: "2022-10-21"
-output: html_document
 ---
-
-
 
 ```{r}
 library(devtools)
@@ -22,8 +18,6 @@ library(kknn)
 
 devtools::install_github("https://github.com/mlr-org/mlr3extralearners")
 ```
-
-
 
 ```{r}
 link <- "https://github.com/FLS-6497/datasets/blob/main/projeto1/discursos_pres_internacionais.csv?raw=true"
