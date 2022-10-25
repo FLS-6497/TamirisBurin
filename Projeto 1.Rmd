@@ -6,6 +6,7 @@ output: html_document
 ---
 
 
+
 ```{r}
 library(devtools)
 library(tidyverse)
@@ -17,6 +18,7 @@ library(tibble)
 library(earth)
 library(mlr3extralearners)
 library(quanteda)
+library(kknn)
 
 devtools::install_github("https://github.com/mlr-org/mlr3extralearners")
 ```
@@ -30,51 +32,68 @@ discursos <- readr::read_csv2(link) %>%
 ```
 
 ```{r}
-
 modelo_tami1 <- function(df, var) {
-  
 # 1) Cria um corpus
-cps <- corpus(discursos, text_field = "discurso")
+cps <- corpus(df, text_field = var)
 
 # 2) Tokenizacao
-tks <- cps %>%
-  tokens(remove_punct = TRUE, remove_numbers = TRUE) %>%
+tks <- tokens(cps, remove_punct = TRUE, remove_numbers = TRUE) %>%
   tokens_tolower() %>%
-  tokens_remove(min_nchar = 4, pattern = stopwords("pt")) %>% 
-  tokens_wordstem("pt") 
+  tokens_remove(pattern = stopwords("pt"), min_nchar=5)
 
 # 3) Criacao de uma matriz bag-of-words
-tks_dfm <- dfm(tks) %>%
+bow <- dfm(tks) %>%
   dfm_trim(min_docfreq = 0.05, docfreq_type = "prop")
 
-# 4 e Etapa final) Transformar o resultado para tibble para o mlr3
-tks_dfm <- tks_dfm %>%
-  as.matrix() %>%
+# 4) Transformar o resultado para tibble para o mlr3
+dados <- as.matrix(bow) %>%
   as_tibble() %>% 
   janitor::clean_names() %>% 
   mutate_all(as.numeric)
 
-#Resutado da matri
-tks_dfm$y <- discursos$presidente
-return(list(df = discursos, bow = tks_dfm))
-
-#Predição
-tsk <- as_task_classif(y ~.,data = bow)
-learner <- lrn("classif.naive_bayes")
-resampling <- rsmp("holdout", ratio = 0.7)
-resultados <- resample(tsk, learner, resampling)
-
-resultados$prediction()
-
-resultados$score(msr("classif.fbeta"))
+#Resutado da matrix
+dados$y <- df$presidente
+return(list(df = dados, bow = bow))
 
 }
 
-modelo_tami1()
-
+modelo_tami1(df=discursos, var = "discurso")
 ```
 
+```{r}
+discursostreino <- discursos %>% 
+  sample_frac(0.7)
 
+discursosteste <- discursos %>% 
+  filter(!id %in% discursostreino$id) 
 
+discursostreinobow <- modelo_tami1(df=discursostreino, var= "discurso")
 
+#Adequar a base de teste
+discursostestebow <- discursosteste %>% 
+  corpus(text_field = "discurso") %>% 
+  tokens() %>% 
+  dfm() %>% 
+  dfm_match(featnames(discursostreinobow$bow)) %>%
+  as.matrix() %>% 
+  as_tibble() %>% 
+  janitor::clean_names()%>% 
+  mutate_all(as.numeric)
 
+discursostestebow$y <- as.factor(discursosteste$presidente)
+
+#Treina 
+tsk <- as_task_classif(y ~.,data=discursostreinobow$df)
+learner <- lrn("classif.naive_bayes")
+learner$train(tsk)
+
+pred <- learner$predict_newdata(discursostestebow)
+pred
+
+discursosteste$predicao <- pred$response
+discursosteste
+head(cbind(discursosteste$presidente, as.character(discursosteste$predicao)),10)
+
+#Confere predicoes com metricas de validacao
+pred$confusion
+pred$score(msrs(c("classif.precision", "classif.recall", "classif.fbeta")))
