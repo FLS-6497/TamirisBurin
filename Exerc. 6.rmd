@@ -1,0 +1,196 @@
+---
+title: "Exerc. 6"
+author: "Tamiris Burin"
+date: "2022-10-05"
+output: html_document
+---
+# eXERCÍCIO 6
+
+```{r}
+library(tidyverse)
+library(mlr3verse)
+library(igraph)
+library(quanteda)
+library(janitor)
+library(tibble)
+library(earth)
+```
+```{r}
+link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+dados <- readr::read_csv(link) %>% 
+  select_if(is.numeric)
+```
+
+## a) Criação de pipelines
+
+Usando *pipelines*, crie três diferentes pré-processamentos para as *features* numéricas da base: a) uma sem transformações; b) outra fazendo estandardização das variáveis; e, c), outra incluindo alguns polinômios. As *pipelines* devem usar regressão linear simples como modelo para predizer a variável `maximum_temprature`.
+
+#recebe as variáveis, escala e estandariza as variáveis, recebe o modelo linear
+```{r}
+gr1 <- po("learner", learner = lrn("regr.lm")) %>% 
+  as_learner()
+```
+
+```{r}
+gr2 <- po("scale") %>>% 
+  po("learner", learner = lrn("regr.lm")) %>% 
+  as_learner()
+
+gr2$graph$plot()
+```
+
+```{r}
+gr3 <- po("scale") %>>% 
+  po("mutate") %>>% 
+  po("learner", learner = lrn("regr.lm")) %>% 
+  as_learner()
+
+gr3$param_set$values$mutate.mutation <- list(
+  teste = ~ cloud_coverage^2,
+  teste2 = ~ pressure^3,
+  teste3 = ~ pressure^3)
+```
+#note que dá para criar uma pipeline sem nenhuma task
+
+
+## b) Benchmark
+
+Compare as *pipelines* anteriores rodando 100 vezes cada uma usando *holdout* com 70% das observações em treino, calculando para cada também o `RMSE`. Reporte os resultados por meio de um gráfico de boxplot. Dica: use uma função para encapsular *pipelines*, treino dos modelos e cálculo de métricas de validação.
+
+```{r}
+roda_benchmark <- function() { 
+  design <- benchmark_grid(
+  task = as_task_regr(maximum_temprature ~ ., data = dados),
+  learners = list (gr1, gr2, gr3),
+  resamplings = rsmp("holdout", ratio = 0.7)
+)
+
+resultados <- benchmark(design)
+resultados$score(msr("regr.rmse"))
+}
+
+```
+Rodar 100 vezes
+
+```{r}
+resultadoscem <- 1:100 %>% 
+  map_df(~ roda_benchmark())
+```
+#melhor rodar 1000 vezes, usar uma CID para replicar, usar um teste de média para indicar que o pré-processamente é melhor. Para os leitores interessados, os teste adicionais estão no apêndice.
+
+## c) Comparação de modelos
+
+Selecione a melhor *pipeline* do exercício anterior e crie outras três novas em cima dela: uma que regressão por `knn` em vez de regressão linear; uma que use MARS (o algoritmo `earth`); e, por fim, uma que use regressão por meio de árvore de decisão (`tree` ou `regr.rpart`). Rode 100 vezes cada *pipeline* e compare novamente os `RMSE` usando um gráfico de boxplot.
+#árvora de deci~sao é quase uma heurística. 
+
+```{r}
+resultadoscem %>% 
+  ggplot(aes(group = nr, y = regr.rmse))+
+  geom_boxplot()
+```
+#Primeiro instalar o RTools
+https://cran.rstudio.com/bin/windows/Rtools/
+```{r}
+devtools::install_github("https://github.com/mlr-org/mlr3extralearners.git", force = TRUE)
+```
+
+
+```{r}
+library(rpart)
+library(kknn)
+```
+# Depois instalar o rpart (corta as variáveis como se fossem categóricas e vai construindo novas decisões em cima das decisões passadas)
+
+#kknn faz as duas coisas
+
+# KNN REGRESSION LEARNER:
+```{r}
+gr4 <- po("scale") %>>% 
+  po("mutate") %>>% 
+  po("learner", learner = lrn("regr.kknn")) %>% 
+  as_learner()
+
+gr4$param_set$values$mutate.mutation <- list(
+  teste = ~ cloud_coverage^2,
+  teste2 = ~ cloud_coverage^3,
+  teste3 = ~ pressure^2,
+  teste4 = ~ pressure^3)
+```
+
+# MARS
+```{r}
+gr5 <- po("scale") %>>% 
+  po("mutate") %>>% 
+  po("learner", learner = lrn("regr.earth")) %>% 
+  as_learner()
+
+gr5$param_set$values$mutate.mutation <- list(
+  teste = ~ cloud_coverage^2,
+  teste2 = ~ cloud_coverage^3,
+  teste3 = ~ pressure^2,
+  teste4 = ~ pressure^3)
+```
+
+# Árvore de decisão
+```{r}
+gr6 <- po("scale") %>>% 
+  po("mutate") %>>% 
+  po("learner", learner = lrn("regr.rpart")) %>% 
+  as_learner()
+
+gr6$param_set$values$mutate.mutation <- list(
+  teste = ~ cloud_coverage^2,
+  teste2 = ~ cloud_coverage^3,
+  teste3 = ~ pressure^2,
+  teste4 = ~ pressure^3)
+```
+
+
+# Função para rodar os pipelines 100 vezes
+
+```{r}
+roda_benchmark2 <- function(){
+  design2 <- benchmark_grid(
+  task = as_task_regr(maximum_temprature ~ ., data = dados),
+  learners = list (gr4, gr5, gr6),
+  resamplings = rsmp("holdout", ratio = 0.7)
+)
+
+resultados_poli <- benchmark(design2)
+resultados_poli$score(msr("regr.rmse"))
+}
+
+resultados_poli100 <- 1:100 %>% 
+  map_df(~ roda_benchmark2())
+```
+
+```{r}
+resultados_poli100 %>% 
+  ggplot(aes(group = nr, y = regr.rmse))+
+  geom_boxplot()
+```
+
+## d) Validação
+Usando a melhor *pipeline* encontrada no exercício anterior, faça validação nas seguintes bases de dados:
+
+# Clima em Campinas
+```{r}
+campinas <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+campinas <- readr::read_csv(campinas)
+```
+
+# Clima em Southampton
+```{r}
+southampton <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/master/web%20scraping/Cleaned%20Data/United%20Kingdom_Southampton_Cleaned.csv"
+southampton <- readr::read_csv(southampton)
+```
+
+```{r}
+gr5$train(tsk) %>% 
+pred <- gr5$predict_newdata(southampton)
+pred$response
+pred$score(msr("regr.rmse"))
+```
+
+
+

@@ -1,0 +1,186 @@
+---
+title: "Exerc. 5"
+author: "Tamiris Burin"
+date: "2022-09-28"
+output: html_document
+---
+
+```{r}
+library(mlr3verse)
+library(tidyverse)
+library(quanteda)
+library(janitor)
+library(tibble)
+library(e1071)
+#devtools::install_github("https://github.com/mlr-org/mlr3extralearners")
+```
+
+#1) Workflow
+Para esse exercício, será necessário carregar discursos presidenciais feitos por Dilma e Temer em parte de seus mandatos:
+
+```{r}
+link <- "https://github.com/FLS-6497/datasets/raw/main/aula5/discursos_presidenciais.csv"
+discursos <- readr::read_csv2(link)
+```
+
+#a) Pré-processamento
+Usando ferramentas de processamento de texto, implemente uma pequena pipeline para limpar dados e, quando estiver satisfeito com ela, crie uma função que aplique ela em uma nova lista textos.
+
+```{r}
+# 1) Cria um corpus
+cps <- corpus(df, docid_field = "id", text_field = "textos")
+
+# 2) Tokenizacao
+tks <- cps %>%
+  tokens(remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>%
+  tokens_remove(min_nchar = 5, pattern = stopwords("pt"))
+  
+# 3) Criacao de uma matriz bag-of-words
+tks_dfm <- dfm(tks) %>%
+  dfm_trim(min_docfreq = 5)
+  
+# 4) Transformar o resultado para tibble para o mlr3
+tks_dfm <- tks_dfm %>%
+  as.matrix() %>%
+  as_tibble()
+```
+
+```{r}
+# Cria um corpus
+cps <- corpus(discursos, text_field = "discurso")
+
+# Tokenizacao
+tks_disc <- tokens(cps, remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>% 
+  tokens_remove(pattern = stopwords("pt")) %>% 
+  tokens_remove(min_nchar = 4) %>% 
+  tokens_remove(pattern = c("aquele", "aquela", "isso", "esse"))
+
+# Bag of Words
+bow <- dfm(tks_disc) %>% 
+  dfm_trim(min_docfreq = 5) 
+#Obs.1. Quando uso número inteiro, ficam as palavras que aparecem em ie. cinco documentos diferentes, porque quero ter variáveis que ajudem a separar mais de um documento.
+#Obs.2. dfm_trim(min_docfreq = 0.05, docfreq_type = "prop")
+```
+
+```{r}
+df <- bow %>% 
+  as.matrix() %>% 
+  as_tibble() %>% 
+  janitor::clean_names() %>% #tirar acentos
+  mutate_all(as.numeric)
+df$y <- discursos$presidente
+```
+```{r}
+tsk <- as_task_classif(y ~.,data = bow)
+learner <- lrn("classif.naive_bayes")
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+
+resultados$score(msr("classif.fbeta"))
+```
+
+# 3) Criacao de uma matriz bag-of-words
+```{r}
+tks_dfm <- dfm(tks) %>%
+  dfm_trim(min_docfreq = 5)
+```
+
+#Modelo para o processamento
+```{r}
+modelo_processamento <- function(df, var) {
+  
+cps <- corpus(df, text_field = var)
+    
+tks_disc <- tokens(cps, remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>% 
+  tokens_remove(pattern = stopwords("pt")) %>% 
+  tokens_remove(min_nchar = 4)# não é relacional, é absoluta e não afeta como seria remova palavras que não ocorrem em 5% dos documentos, é relativa. Qualquer tranformação que é relativa, tem potencial de vazamento. Qualquer tranformação que tenha essa característica relacional, ela corre o risco de vazamento para o teste. O paper foi treinado com vazamentos para o banco de teste.
+  
+bow <- dfm(tks_disc) %>%
+  dfm_trim(min_docfreq = 0.05, docfreq_type = "prop")
+
+df <- bow %>% 
+  as.matrix() %>% 
+  as_tibble() %>% 
+  janitor::clean_names() %>% #organiza os nomes das variaveis e os acentos gráficos
+  mutate_all(as.numeric)
+
+df$y <- df$presidente
+return(list(df = df, bow = bow))
+}
+```
+
+```{r}
+amostra_treino <- modelo_processamento(discursos, "discurso")
+amostra_treino$bow
+```
+
+#Modelo
+```{r}
+modelo <- function(df, var) {
+  tsk <- as_task_classif(y ~.,data = bow)
+learner <- lrn("classif.naive_bayes")
+resampling <- rsmp("holdout", ratio = 0.7)
+resultados <- resample(tsk, learner, resampling)
+
+resultados$prediction()
+
+resultados$score(msr("classif.fbeta"))
+
+}
+```
+
+
+#c) Validação
+Roda o item pedido em b) 100 vezes e salve os resultados de alguma métrica de validação.
+```{r}
+rep <- numeric(100)
+for (i in 1:length(rep)) {
+rep[i] <- modelo("regr.glmnet")
+}
+```
+
+# 1) Cria Id
+```{r}
+discursos <- discursos %>% 
+  mutate (id = row_number())
+```
+
+# 2) Sorteia split-sample
+```{r}
+treino <- discursos %>% 
+  sample_n(500)
+
+teste <- discursos %>% 
+  filter (!id%in% treino$id)
+```
+
+#2) BOW usando apenas a base de treino!
+```{r}
+treino <- modelo_processamento (treino, "discurso")
+```
+
+#3) Adequa a base de teste
+```{r}
+teste %>% 
+  corpus(text_field = "discurso") %>% 
+  tokens() %>% 
+  dfm() %>% 
+  dfm_match(featnames(treino$bow)) %>% 
+  as.matrix() %>% 
+  as_tibble() %>% 
+  janitor::clean_names()
+
+teste$y <- teste$presidente
+```
+
+```{r}
+tsk <- as_task_classif(y ~.,data = treino$df)
+tsk_teste <- 
+  learner <- lrn("classif.naive_bayes")
+learner$train(tsk)
+predict(learner, as_task_classif(y ~.))
+```
+
