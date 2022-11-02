@@ -337,8 +337,8 @@ pred3 <- modeloforestprop$predict_newdata(discursostestebow)
 pred3
 # Confere validação com métricas de teste
 pred3$confusion
-predicao <- pred3$score(msr("classif.logloss"))
-predicao
+pred3 <- pred3$score(msr("classif.logloss"))
+pred3
 ```
 
 ```{r}
