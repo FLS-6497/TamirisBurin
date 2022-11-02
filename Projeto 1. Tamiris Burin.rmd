@@ -1,10 +1,13 @@
 ---
 title: "Projeto 1"
 author: "Tamiris Burin & Bianca Berti"
+output: pdf_document
 ---
 
 ```{r}
 library(tidyverse)
+library(knitr)
+library(kableExtra)
 library(mlr3verse)
 library(quanteda)
 library(janitor)
@@ -353,7 +356,7 @@ De acordo com a métrica da acurácia, o modelo Extreme Gradient Boost tende a r
 
 
 
-### 9. Predicao para base de validacao com discursos sem indicação de autoria
+### 10. Predicao para base de validacao com discursos sem indicação de autoria
 
 Vamos testar a acuracia do Extreme Gradient Boost na amostra de validacao:
 ```{r}
@@ -368,8 +371,14 @@ discursosvalidacaobow <- validacao %>%
   janitor::clean_names()
 
 #Predicao com o modelo Xgboost por logloss proporcional
-predtamirisburin <- modeloxgboostprop$predict_newdata(discursosvalidacaobow)
-predtamirisburin
+predfinal <- modeloxgboostprop$predict_newdata(discursosvalidacaobow)
+
+predtamirisburin <- head(cbind(validacao$id, as.character(predfinal$response)), 25)
+
+tabelapredtamirisburin <- predtamirisburin %>% 
+  kable(caption ="<b>Predição - Projeto 1 - Tamiris Burin</b>", col.names = c("Id do discurso","Presidente previsto")) %>%
+  kable_styling("striped", full_width = F)
+tabelapredtamirisburin
 ```
 
 
