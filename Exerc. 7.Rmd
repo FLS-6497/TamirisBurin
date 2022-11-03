@@ -392,7 +392,7 @@ dados <- readr::read_csv2(link) %>%
   select(-cod_mun_ibge, -nome_municipio) %>%
   mutate_if(is.character, as.factor)
 
-#Obs. Melhor ensemble e vamos validar na base de 2004
+#Obs. Pega o melhor ensemble e vamos validar na base de 2004
 ```
 
 
