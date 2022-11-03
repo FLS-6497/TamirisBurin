@@ -149,6 +149,7 @@ Verificamos que a pipeline de pré-processameno 3 é a melhor escolha, pois tem 
 
 
 
+
 ### 4. Pré-Processamento elegido
 
 Aplicamos o pré-processamento n. 3:
@@ -319,7 +320,6 @@ O modelo de Extreme Gradient Boosting performa de maneira similar ao Random Fore
 
 
 
-
 ### 8. Predição
 
 ```{r,results='hide'}
@@ -424,8 +424,6 @@ tabelapredtamirisburin <- predtamirisburin %>%
   kable_styling("striped", full_width = F)
 tabelapredtamirisburin
 ```
-
-
 
 
 
