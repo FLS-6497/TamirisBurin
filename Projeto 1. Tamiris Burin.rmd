@@ -1,10 +1,9 @@
 ---
 title: "Projeto 1"
-author: "Tamiris Burin & Bianca Berti"
-output: pdf_document
+author: "Tamiris Burin"
 ---
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(knitr)
 library(kableExtra)
@@ -25,7 +24,7 @@ library(remotes)
 
 ### 1. Base de dados
 
-```{r message=FALSE, warning=FALSE}
+```{r, fig.height=8, fig.width=12, message=FALSE, warning=FALSE}
 link <- "https://github.com/FLS-6497/datasets/blob/main/projeto1/discursos_pres_internacionais.csv?raw=true"
 discursos <- readr::read_csv2(link) %>% 
   mutate(id = row_number())
@@ -69,21 +68,31 @@ processamento3 <-
   po("textvectorizer", 
      tolower = TRUE,
      remove_punct = TRUE, 
-     remove_numbers = TRUE, 
-     stem = TRUE,
+     remove_numbers = TRUE,
      min_termfreq = 30,
-     scheme_df = 'inverse',
-     stopwords_language = "pt") %>>%
+     stopwords_language = "pt", 
+     stem = TRUE,
+     scheme_df = 'inverse') %>>%
   po("scale") %>>% 
   po("mutate") %>>% 
   po("learner", learner = lrn("classif.naive_bayes")) %>% 
   as_learner()
+
+#Vale notar as funcoes de processamento testados:
+#1. tolower: minimiza todos os termos para uma comparação facilitada.
+#2. remove_punct: remove a pontuação quando normalmente o contexto do corpus não é analisado. 
+#3. remove_numbers: remove os numeros por nao serem relevantes tambem para a análise.
+#4. min_termfreq: estipula um numero mínimo valores minimo de frequencias do termo em todos os documentos.
+#5. stopwords_language = "pt": remove as palavras pequenas e genericas chamadas de ‘stopwords’, como ‘o’, ‘a’, ‘e’ etc. que nao diferenciam o conteúdo dos textos. É preciso usar o banco de dados de stopwords com a função get_stopwords() para a língua apropriada.
+#6. n = 2: a identificacao de ngrams trata de representar os pares fequentes de palavras do texto. Podemos especificar se procuramos por cunjuntos de 2 ou mais palavras e estes que serao analisadas depois como palavras unicas.
+#7. stem: remove diferentes derivacoes dos termos, retornando os termos em seus radicais. Muito util para neutralizar plurais e verbos conjugados.
+#8. scheme_df = 'inverse': Estipula um peso por termo calculando a frequencia inversa desse termo no documento.
 ```
 
 
 ### 3. Comparando Pré-Processamentos
 
-```{r}
+```{r message=FALSE, warning=FALSE, results='hide'}
 tsk <- as_task_classif(presidente ~ discurso, data = discursos)
 
   design.text <- benchmark_grid(
@@ -95,9 +104,11 @@ resultados.text <- benchmark(design.text)
 resultados.text$score(msr(c("classif.acc")))
 ```
 
-Considerando que os pipelines 1 e 3 apresentam os melhores resultados, vamos rodá-los 20 vezes cada um com 3 métricas de validações diferentes.
 
-```{r}
+Considerando que os pipelines de processamento 1 e 3 apresentaram os melhores resultados, vamos rodá-los 20 vezes cada um com 3 métricas de validações diferentes: Accuracy, Balanced Accuracy, e o Classification Error. Lembrando que quanto menor o índice do Classification Error, mais acurado é o resultado.
+
+
+```{r, message=FALSE, warning=FALSE, results='hide'}
 tsk <- as_task_classif(presidente ~ discurso, data = discursos)
 
 validacaooprocessamentos <- function(){
@@ -111,26 +122,27 @@ resultados_pipe$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 }
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, results='hide'}
 resultados_processamentos <- 1:20 %>%
   map_df(~ validacaooprocessamentos())
 ```
 
 ```{r}
+#Accuracy
 resultados_processamentos %>%
   ggplot(aes(group = nr, y = classif.acc, x = nr)) +
   geom_boxplot()
 ```
 
 ```{r}
-# Métrica: BACC (Balanced Accuracy)
+#Balanced Accuracy
 resultados_processamentos %>%
   ggplot(aes(group = nr, y = classif.bacc, x = nr)) +
   geom_boxplot()
 ```
 
 ```{r}
-# Métrica: CE (Classification Error) - quanto MENOR, melhor.
+#Classification Error
 resultados_processamentos %>%
   ggplot(aes(group = nr, y = classif.ce, x = nr)) +
   geom_boxplot()
@@ -139,9 +151,13 @@ resultados_processamentos %>%
 Verificamos que a pipeline de pré-processameno 3 é a melhor escolha, pois tem maior acurácia e menor erro, em média.
 
 
-### 4. Pre-Processamento Eleito
 
-```{r}
+### 4. Pré-Processamento elegido
+
+
+Aplicamos o pré-processamento n. 3:
+
+```{r message=FALSE, warning=FALSE, results='hide'}
 processamento <- function(df, var) {
 # Cria um corpus
 cps <- corpus(df, text_field = var)
@@ -174,6 +190,7 @@ return(list(df = dados, bow = bow))
 processamento(df=discursos, var="discurso")
 ```
 
+
 ### 5. Adequando Treino e Teste
 
 ```{r}
@@ -205,6 +222,7 @@ tsk <- as_task_classif(y ~.,data=discursostreinobow$df)
 ```
 
 
+
 ### 6. Modelos 
 
 Aplicaremos três modelos:
@@ -230,7 +248,7 @@ forest <-
   as_learner()
 ```
 
-```{r}
+```{r message=FALSE, results='hide'}
 modelos <- benchmark_grid(
   tasks = tsk,
   learners = list(naive, kknn, forest),
@@ -239,28 +257,29 @@ modelos <- benchmark_grid(
 resultadosmodelos <- benchmark(modelos)
 resultadosmodelos$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
-O modelo Random Forest apresentou os melhores resultados.
+Concluímos que o modelo Random Forest apresentou os melhores resultados.
+
 
 
 ### 7. Aplicando Ensembles
 
 Aplicaremos 3 ensembles: 
-```{r}
-#Árvore de decisao
+```{r message=FALSE, results='hide'}
+#Arvores de decisao
 arvore <- 
   po("scale") %>>% 
   po("learner", learner = lrn("classif.rpart", predict_type = "prob")) %>%
   as_learner()
 
-#Bagging (sumsample + bootstrap). A bagging é uma combinação de vários modelos
+#Bagging (sumsample + bootstrap)
 bagging <- 
   po("subsample", frac = 1, replace = T) %>>% 
   po("learner", learner = lrn("classif.rpart")) %>%
-  ppl("greplicate", ., 10) %>>% #para replicar o procedimento 10 vezes
-  po("classifavg", innum = 10) %>% #para agregar diferentes predições
+  ppl("greplicate", ., 10) %>>% 
+  po("classifavg", innum = 10) %>%
   as_learner()
 
-#treinando as pipelines para a comparação:
+#Treinando as pipelines para a comparacao:
 ensemble <- benchmark_grid(
   tasks = tsk,
   learners = list(arvore, bagging),
@@ -269,10 +288,12 @@ ensemble <- benchmark_grid(
 resultadosensemble <- benchmark(ensemble)
 resultadosensemble$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
-O modelo de random forest ainda parece melhor que os ensembles Árvore de decisão e Bagging.
+
+O modelo de Random Forest ainda parece melhor que os ensembles Arvore de Decisao e Bagging.
 
 
-```{r}
+
+```{r message=FALSE, results='hide'}
 #Extreme Gradient Boosting 
 gr_xgboost1 <- po("learner", learner = lrn("classif.xgboost", nrounds = 10, predict_type = "prob")) %>%
   as_learner()
@@ -291,26 +312,35 @@ modelosxgboost <- benchmark_grid(
 resultados <- benchmark(modelosxgboost)
 resultados$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
+
 O modelo de Extreme Gradient Boosting performa de maneira similar ao Random Forest, com acurácia maior que 0,9. Eventuais diferenças podem ser ruídos decorrentes dos hiperparâmetros deste ensemble. 
+
+
 
 
 ### 8. Predicao
 
-```{r}
+```{r,results='hide'}
 #Predicao Random Forest
 modeloforest <- forest$train(tsk)
 pred1 <- modeloforest$predict_newdata(discursostestebow)
 pred1
+```
+
+```{r}
 #Confere validacao com metricas de teste
 pred1$confusion
 pred1$score(msr("classif.acc"))
 ```
 
-```{r}
+```{r,results='hide'}
 #Predicao Extreme Gradient Boosting
 modelosxgboost <- gr_xgboost2$train(tsk)
 pred2 <- modelosxgboost$predict_newdata(discursostestebow)
 pred2
+```
+
+```{r}
 #Confere validacao com metricas de teste
 pred2$confusion
 pred2 <- pred2$score(msr("classif.acc"))
@@ -318,7 +348,8 @@ pred2
 ```
 
 
-### 9. Predicao de Random Forest e Extreme Gradient Boosting exportando probabilidades:
+
+### 9. Predição de Random Forest e Extreme Gradient Boosting exportando probabilidades:
 
 ```{r}
 forestprop <- 
@@ -330,22 +361,28 @@ xgboostprop <-
   as_learner()
 ```
 
-```{r}
+```{r,results='hide'}
 #Predicao Random Forest (Prop)
 modeloforestprop <- forestprop$train(tsk)
 pred3 <- modeloforestprop$predict_newdata(discursostestebow)
 pred3
+```
+
+```{r}
 # Confere validação com métricas de teste
 pred3$confusion
 pred3 <- pred3$score(msr("classif.logloss"))
 pred3
 ```
 
-```{r}
+```{r,results='hide'}
 #Predicao Extreme Gradient Boosting (Prop)
 modeloxgboostprop <- xgboostprop$train(tsk)
 pred4 <- modeloxgboostprop$predict_newdata(discursostestebow)
 pred4
+```
+
+```{r}
 # Confere validação com métricas de teste
 pred4$confusion
 pred4 <- pred4$score(msr("classif.logloss"))
@@ -356,9 +393,12 @@ De acordo com a métrica da acurácia, o modelo Extreme Gradient Boost tende a r
 
 
 
-### 10. Predicao para base de validacao com discursos sem indicação de autoria
 
-Vamos testar a acuracia do Extreme Gradient Boost na amostra de validacao:
+### 10. Predição para base de validação com discursos sem indicação de autoria
+
+Testamos a acuracia do Extreme Gradient Boost na amostra de validação:
+
+
 ```{r}
 #Adequo a base de validacao externa
 discursosvalidacaobow <- validacao %>% 
