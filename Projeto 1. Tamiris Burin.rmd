@@ -30,6 +30,8 @@ validacao <- readr::read_csv2(linkvalidacao) %>%
 ```
 
 
+
+
 ### 2. Modulando Processamentos
 
 ```{r}
@@ -74,7 +76,7 @@ processamento3 <-
   as_learner()
 ```
 
-#Vale notar as funcoes de processamento testados:
+Vale notar as funções de processamento testados:
 1. tolower: minimiza todos os termos para uma comparação facilitada.
 2. remove_punct: remove a pontuação quando normalmente o contexto do corpus não é analisado. 
 3. remove_numbers: remove os numeros por nao serem relevantes tambem para a análise.
@@ -83,6 +85,9 @@ processamento3 <-
 6. n = 2: a identificacao de ngrams trata de representar os pares fequentes de palavras do texto. Podemos especificar se procuramos por cunjuntos de 2 ou mais palavras e estes que serao analisadas depois como palavras unicas.
 7. stem: remove diferentes derivacoes dos termos, retornando os termos em seus radicais. Muito util para neutralizar plurais e verbos conjugados.
 8. scheme_df = 'inverse': Estipula um peso por termo calculando a frequencia inversa desse termo no documento.
+
+
+
 
 ### 3. Comparando Pré-Processamentos
 
@@ -143,6 +148,7 @@ resultados_processamentos %>%
 Verificamos que a pipeline de pré-processameno 3 é a melhor escolha, pois tem maior acurácia e menor erro, em média.
 
 
+
 ### 4. Pré-Processamento elegido
 
 Aplicamos o pré-processamento n. 3:
@@ -179,6 +185,9 @@ return(list(df = dados, bow = bow))
 processamento(df=discursos, var="discurso")
 ```
 
+
+
+
 ### 5. Adequando Treino e Teste
 
 ```{r}
@@ -208,6 +217,8 @@ discursostestebow$y <- as.factor(discursosteste$presidente)
 #Treinando 
 tsk <- as_task_classif(y ~.,data=discursostreinobow$df)
 ```
+
+
 
 
 ### 6. Modelos 
@@ -244,7 +255,10 @@ modelos <- benchmark_grid(
 resultadosmodelos <- benchmark(modelos)
 resultadosmodelos$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
+
 Concluímos que o modelo Random Forest apresentou os melhores resultados.
+
+
 
 
 ### 7. Aplicando Ensembles
@@ -274,18 +288,21 @@ ensemble <- benchmark_grid(
 resultadosensemble <- benchmark(ensemble)
 resultadosensemble$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
-O modelo de Random Forest ainda parece melhor que os ensembles Arvore de Decisao e Bagging.
+O modelo de Random Forest ainda parece melhor que os ensembles Árvore de Decisão e Bagging.
 
 
 ```{r message=FALSE, results='hide'}
 #Extreme Gradient Boosting 
-gr_xgboost1 <- po("learner", learner = lrn("classif.xgboost", nrounds = 10, predict_type = "prob")) %>%
+gr_xgboost1 <- 
+  po("learner", learner = lrn("classif.xgboost", nrounds = 10, predict_type = "prob")) %>%
   as_learner()
 
-gr_xgboost2 <- po("learner", learner = lrn("classif.xgboost", nrounds = 50, predict_type = "prob")) %>%
+gr_xgboost2 <- 
+  po("learner", learner = lrn("classif.xgboost", nrounds = 50, predict_type = "prob")) %>%
   as_learner()
 
-gr_xgboost3 <- po("learner", learner = lrn("classif.xgboost", nrounds = 200, predict_type = "prob")) %>%
+gr_xgboost3 <- 
+  po("learner", learner = lrn("classif.xgboost", nrounds = 200, predict_type = "prob")) %>%
   as_learner()
 
 modelosxgboost <- benchmark_grid(
@@ -296,10 +313,14 @@ modelosxgboost <- benchmark_grid(
 resultados <- benchmark(modelosxgboost)
 resultados$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
+
 O modelo de Extreme Gradient Boosting performa de maneira similar ao Random Forest, com acurácia maior que 0,9. Eventuais diferenças podem ser ruídos decorrentes dos hiperparâmetros deste ensemble. 
 
 
-### 8. Predicao
+
+
+
+### 8. Predição
 
 ```{r,results='hide'}
 #Predicao Random Forest
@@ -327,6 +348,8 @@ pred2$confusion
 pred2 <- pred2$score(msr("classif.acc"))
 pred2
 ```
+
+
 
 
 ### 9. Predição de Random Forest e Extreme Gradient Boosting exportando probabilidades:
@@ -369,13 +392,14 @@ pred4 <- pred4$score(msr("classif.logloss"))
 pred4
 ```
 
-De acordo com a métrica da acurácia, o modelo Extreme Gradient Boost tende a revelar proporções mais altas de probabilidade de acerto. A métrica de validação logloss é o inverso do logaritmo da função de probabilidade, de forma que valores menores de logloss significam maior probabilidade de acerto do modelo. Sendo assim, o modelo de extreme gradient boosting é superior ao random forest, nesse caso em particular.
+De acordo com a métrica da acurácia, o modelo Extreme Gradient Boost tende a revelar proporções mais altas de probabilidade de acerto. A métrica de validação logloss é o inverso do logaritmo da função de probabilidade, de forma que valores menores de logloss significam maior probabilidade de acerto do modelo. Sendo assim, o modelo de extreme gradient boosting é superior ao Random Forest, nesse caso em particular.
+
 
 
 
 ### 10. Predição para base de validação com discursos sem indicação de autoria
 
-Vamos testar a acuracia do Extreme Gradient Boost na amostra de validação:
+Testamos, por fim, a acurácia do Extreme Gradient Boost na amostra de validação:
 ```{r}
 #Adequo a base de validacao externa
 discursosvalidacaobow <- validacao %>% 
