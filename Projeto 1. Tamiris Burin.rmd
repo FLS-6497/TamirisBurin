@@ -75,14 +75,14 @@ processamento3 <-
 ```
 
 #Vale notar as funcoes de processamento testados:
-#1. tolower: minimiza todos os termos para uma comparação facilitada.
-#2. remove_punct: remove a pontuação quando normalmente o contexto do corpus não é analisado. 
-#3. remove_numbers: remove os numeros por nao serem relevantes tambem para a análise.
-#4. min_termfreq: estipula um valor mínimo de frequência do termo em todos os documentos.
-#5. stopwords_language = "pt": remove as palavras pequenas e genericas chamadas de ‘stopwords’, como ‘o’, ‘a’, ‘e’ etc. que nao diferenciam o conteúdo dos textos. É preciso usar o banco de dados de stopwords com a função get_stopwords() para a língua apropriada.
-#6. n = 2: a identificacao de ngrams trata de representar os pares fequentes de palavras do texto. Podemos especificar se procuramos por cunjuntos de 2 ou mais palavras e estes que serao analisadas depois como palavras unicas.
-#7. stem: remove diferentes derivacoes dos termos, retornando os termos em seus radicais. Muito util para neutralizar plurais e verbos conjugados.
-#8. scheme_df = 'inverse': Estipula um peso por termo calculando a frequencia inversa desse termo no documento.
+1. tolower: minimiza todos os termos para uma comparação facilitada.
+2. remove_punct: remove a pontuação quando normalmente o contexto do corpus não é analisado. 
+3. remove_numbers: remove os numeros por nao serem relevantes tambem para a análise.
+4. min_termfreq: estipula um valor mínimo de frequência do termo em todos os documentos.
+5. stopwords_language = "pt": remove as palavras pequenas e genericas chamadas de ‘stopwords’, como ‘o’, ‘a’, ‘e’ etc. que nao diferenciam o conteúdo dos textos. É preciso usar o banco de dados de stopwords com a função get_stopwords() para a língua apropriada.
+6. n = 2: a identificacao de ngrams trata de representar os pares fequentes de palavras do texto. Podemos especificar se procuramos por cunjuntos de 2 ou mais palavras e estes que serao analisadas depois como palavras unicas.
+7. stem: remove diferentes derivacoes dos termos, retornando os termos em seus radicais. Muito util para neutralizar plurais e verbos conjugados.
+8. scheme_df = 'inverse': Estipula um peso por termo calculando a frequencia inversa desse termo no documento.
 
 ### 3. Comparando Pré-Processamentos
 
