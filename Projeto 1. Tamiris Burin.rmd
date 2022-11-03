@@ -76,7 +76,7 @@ processamento3 <-
   as_learner()
 ```
 
-Vale notar as funções de processamento testados:
+Vale notar as funções de processamento testadas:
 1. tolower: minimiza todos os termos para uma comparação facilitada.
 2. remove_punct: remove a pontuação quando normalmente o contexto do corpus não é analisado. 
 3. remove_numbers: remove os numeros por nao serem relevantes tambem para a análise.
@@ -191,9 +191,9 @@ processamento(df=discursos, var="discurso")
 ### 5. Adequando Treino e Teste
 
 ```{r}
+#Separando amostras de treino e teste, 70% e 30% respectivamente
 discursostreino <- discursos %>% 
   sample_frac(0.7)
-
 discursosteste <- discursos %>% 
   filter(!id %in% discursostreino$id) 
 
@@ -210,9 +210,7 @@ discursostestebow <- discursosteste %>%
   as_tibble() %>% 
   janitor::clean_names()%>% 
   mutate_all(as.numeric)
-
 discursostestebow$y <- as.factor(discursosteste$presidente)
-
 
 #Treinando 
 tsk <- as_task_classif(y ~.,data=discursostreinobow$df)
@@ -263,7 +261,7 @@ Concluímos que o modelo Random Forest apresentou os melhores resultados.
 
 ### 7. Aplicando Ensembles
 
-Aplicaremos 3 ensembles: 
+1. Aplicamos os ensembles Árvore de Decisão e Bagging: 
 ```{r message=FALSE, results='hide'}
 #Arvores de decisao
 arvore <- 
@@ -288,9 +286,11 @@ ensemble <- benchmark_grid(
 resultadosensemble <- benchmark(ensemble)
 resultadosensemble$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
 ```
+
 O modelo de Random Forest ainda parece melhor que os ensembles Árvore de Decisão e Bagging.
 
 
+2. Aplicamos o Extreme Gradient Boosting: 
 ```{r message=FALSE, results='hide'}
 #Extreme Gradient Boosting 
 gr_xgboost1 <- 
@@ -416,8 +416,11 @@ predfinal <- modeloxgboostprop$predict_newdata(discursosvalidacaobow)
 
 predtamirisburin <- head(cbind(validacao$id, as.character(predfinal$response)), 25)
 
+#Tabela de Predição da base de validação com discursos sem indicação de autoria
 tabelapredtamirisburin <- predtamirisburin %>% 
-  kable(caption ="<b>Predição - Projeto 1 - Tamiris Burin</b>", col.names = c("Id do discurso","Presidente previsto")) %>%
+  kable(
+    caption ="<b>Predição - Projeto 1 - Tamiris Burin</b>", 
+    col.names = c("Id do discurso","Presidente previsto")) %>%
   kable_styling("striped", full_width = F)
 tabelapredtamirisburin
 ```
