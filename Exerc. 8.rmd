@@ -1,0 +1,226 @@
+---
+title: "Aula 8"
+author: "Tamiris Burin"
+date: "2022-11-16"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(mlr3verse)
+library(igraph)
+library(quanteda)
+library(janitor)
+library(tibble)
+library(earth)
+```
+
+**Aprendizado não-supervisionado (PCA)**
+
+O objetivo é reduzir a dimensionalidade de umbanco e usar como pre-processamento. (parecido com os modelos de variaveis latentes)
+
+Resudir variáveis e fazerr gráficos bivariáves com multiplas variáveis.
+
+Uma variavel projetada em um novo sistema de dimencionalidade Quando reuzimos com o PCA
+
+Combina as variáveis para tornar em uma variável. para cada uma das dimenções, ele calcula uma equação para refletir e diz o quanto tem que fazer com cada variável para plotar as observações de variáveis diferentes. Fora que eu posso colocar as variáveis também numa mesma dimensão. Oque possibilita ver a proximidade entre elas.
+
+Cada dimensão é uma feature, uma variável. Kernel pega relações não lineares. como oservações que fazem um U e nao uma /.
+
+Já os textos, eles formam matrizes muito esparças. O PCA não funciona muito bem. ELe é muito sensível à ditribuição das variáveis.
+
+*Clustering (Keymings)*
+
+O principal é que ele agrupa em grupos em que vc especifica de antemão o grupo de numeros que você quer. O algoritmo sorteia um ponto médio aleatoriamente, aí pega cada um dos pontos e calcula a distancia euclidiana e com o resultado, ele re calcula os novos pontos como centroides e aqueles como só pontos. Isso várias vezes e as interações do algorítmo vão apromorando. Quero ver o quanto diferentes fiquem diferentes e o contrário tamém.
+
+A depender do resultado do orimeiro sortei, ele acha a melhor forma dada o sorteio inicial. Ele é muito sensível ao sortei inicial. Há umas técnicas que vc melhora o prmeio sorteio. Calcula um ordenamento inicial antes de processar.
+
+*Hierarquical cluster (cluster hierarquico aglomerativo).*
+
+Parte de uma forma um pouco mais indutiva. Ele colapsa observações mais próximas do banco. E faz isso de forma hierárquica. Eu não preciso especificar o número de clusters.
+
+Em geral, ´para um estudo exporatório, não é muito utilizada a análise de cluster. Perfil de votos, de gasto de gabinete, classificação de regimes.
+
+Apresendizado Semi--Supervisionado
+
+Não tem uma variável y par predizer. Seed_LDA análise de cluster de textos. Vc fornece palavras especiais para ancorar os tópicos. Economia, inflaçao, desemprego. Aplicações disso em Python.
+
+positive unlabeled learning. fornece 5 exemplos da positive labels e que vc sabe eu algoritmo classificaria eles como 1. O sistma classificariam sosinhos. Classificação binária.
+
+
+```{r}
+# Carrega pacotes
+library(tidyverse)
+library(mlr3verse)
+```
+
+
+```{r}
+# Carrega dados
+link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+
+dado <- readr::read_csv(link) %>%
+  select_if(is.numeric)
+
+# Define a task
+tsk <- as_task_regr(maximum_temprature ~ ., data = dados)
+
+# Exibe os dados originais
+tsk$data()
+
+# Cria uma pipeline com PCA
+gr <- po("scale") %>>%
+  po("pca")
+
+# Treina a pipeline e exibe os dados transformados
+gr$train(tsk)
+gr$state
+```
+
+
+
+EXERCÌCIO 8
+
+
+
+
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula7/eleicoes2000.csv"
+dados <- readr::read_csv2(link) %>%
+  select(-cod_mun_ibge, -nome_municipio) %>%
+  mutate_if(is.character, as.factor)
+```
+
+
+a) Criando uma pipeline
+Com os dados, implemente uma pipeline de classificação que use PCA para reduzir o número de features nos dados. Seu objetivo será predizer qual partido governa dado município. Calcule alguma métrica de validação.
+
+```{r}
+
+#dados <- dados %>% 
+  #mutate(partido = case_when(partido == "PMDB-PSDB-PFL" ~ 1,T ~ 0)) %>%
+  #select_if(is.numeric)
+
+# Define a task
+tsk <- as_task_classif(partido ~ ., data = dados)
+
+# Exibe os dados originais
+tsk$data()
+
+# Cria uma pipeline com PCA
+gr <- po("scale") %>>%
+  po("pca", rank.=2) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+# Treina a pipeline e exibe os dados transformados
+gr$train(tsk)
+gr$state #estatíticas. 
+
+```
+
+b) Testando diferentes pipelines
+Partindo da pipeline anterior, crie diferentes pipelines alterando o número de dimensões no PCA para 2, 3, 4 e 5. Rode essas pipelines e compare seus resultados.
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+
+gr3 <- po("scale") %>>%
+  po("pca", rank.=3) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+gr4 <- po("scale") %>>%
+  po("pca", rank.=4) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+gr5 <- po("scale") %>>%
+  po("pca", rank.=5)  %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+
+design.text <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr,gr3,gr4,gr5),
+  resamplings = rsmp("holdout", ratio = 0.7))
+  
+
+resultados <- benchmark(design.text)
+resultados$score(msr("classif.acc"))
+
+```
+```{r}
+library(kernlab)
+```
+
+c) Alternativas
+Checando a documentação do seu framework, implemente alguma alternativa ao PCA (exemplo: kernel PCA).
+
+```{r}
+# Cria uma pipeline com PCA
+gr <- po("scale") %>>%
+  po("kernelpca", features = 2) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+gr3 <- po("scale") %>>%
+  po("kernelpca", features =3) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+gr4 <- po("scale") %>>%
+  po("kernelpca", features =4) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+gr5 <- po("scale") %>>%
+  po("kernelpca", features =5)  %>>% 
+  po("learner", learner = lrn("classif.naive_bayes")) %>% 
+  as_learner()
+
+
+design.text <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr,gr3,gr4,gr5),
+  resamplings = rsmp("holdout", ratio = 0.7))
+  
+
+resultados <- benchmark(design.text)
+resultados$score(msr("classif.acc"))
+```
+
+
+2) Clustering
+Para esse exercício, usaremos uma nova base de dados com gastos reportados dos gabinetes de deputados e deputadas federais até agora, em 2022, separados por tipo de gasto:
+
+
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula8/gabinetes22.csv"
+dados <- readr::read_csv2(link)
+```
+
+dados2 <- dados %>%
+  select_if(is.numeric)
+
+a) K-means
+Use K-means para separar os e as parlamentares em 4 grupos. Adicione essa classificação na base de dados original e a explore para tentar compreender quais são esses grupos.
+
+#compara todas as variáveis com ggplot, blokspot
+#com as dimenões, nós rodariamos a análise de cluster
+
+b) Alternativas
+Use outro algoritmo de clustering e faça uma nova classificação dos e das parlamentares. Compare com a anterior para examinar as diferenças.
+#poderiamos usar algum que esteja disponível na documentação. o IER, talvez.
+#não é bom ter diferença, pq significa que os classificadores são muitos sensíveis ao seu critério de escolha
+
+
+IMPORTANTE TRABALHO FINAL
+problemas de série temporal. não podemos colocar um dado recente para validar um dado antigo.
+achar ou criar um indicador de importancia em um município.
+exboost feature importance, qual variável teve mais importancia. (variáveis que aparecem muito, podemos ver a importancia)
+
+Como separar os países para comparar. 
+Outras formas de validação.
+Separar por países e por tempo. 
+
