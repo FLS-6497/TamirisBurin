@@ -1,0 +1,412 @@
+---
+title: "Exerc. 9"
+author: "Tamiris"
+date: "2022-11-23"
+output: html_document
+---
+
+Pra qualquer projeto em AM, o principal é a validação.
+Para o número de folds, (k), é sempre o trade off entre bias e variância.
+Mas as vezes é melhor usar um k=3 e repetir isso 3 vezes.
+O melhor sempre é usar o repeted cross-vadiation.
+
+Até agora nós estávamos usando o hould-oud, que é o k=2. Mas agora vamos usar estratégias mais sofisticadas.
+
+Nós o boostrap.
+
+
+Grupo, cluster ou estarato:
+
+Cluster é um grupo ao qual as observações são muito relacionadas entre elas.
+A obvervação de São Paulo em 2010 vai ser muito parecida com São Paulo de 2011.Se por acaso, de 10 obs parecidas, 5 vão pro treino. Se seu modelo for bom, ele vai conseguir identificar aquele cluster de 5 mesmo. Se vc sabe que a sua bate tem uma estrutura de cluster, o ideal é levar isso em conta na análise. E fazer isso por kluster. Aí a gente joga o cluster inteiro de 10 para treino ou teste. 
+Enfim, definida pelas características dos dados.
+
+
+Estrato é um pouco diferente, não significa que as obs são relacionadas entre si, mas que elas tem alguma coisa de semelhante que é interessante ao problema. Geralmente é a VD.
+Pàra manter a proporção das categorias. É importante manter o peso das regiões. Sortear uma amostra estratificada. Isso é feito para diminuir a variância amostral. Isso evita que uma amostra fica esquisita e acabe com municípios só do interior. Quando vc tem uma VI que vc acha importante você pode estratificar por ela. 
+Enfim, para manter determinado grupo de obs em uma proporção fixa.
+
+
+Correlação temporal:
+
+É muito mais fácil em R fazer análise temporal em modelos tradicionais.
+Mesmo assim a gente tem uma ideia básica para aplicar isso no paper da disciplina.
+
+Já que os dados tem uma estrutura temporal, devo fazer o sorteio mantendo essa estrutura.
+Faço isso sempre com uma janela fixa de observações.
+Eu não uso uma janela fixa, uso uma janela móvel. 
+
+Aplicar ou não o gap para separar as amostras de treino e teste. TEm que ir testando para evitar o vazamento de dados. Quando tem vazamento, começa a melhorar demais.
+
+MR3 forecast
+
+remotes::install_github("mlr-org/mlr3forecasting")
+install.packages("vars")
+
+
+Correlação espacial:
+
+Tem que levar em consideração essa espacialidade.
+
+
+Desbalanço das categorias:
+
+Vc quer que o modelo apreenda a identificar um padrão generalizável, então pegar amostras mais proporcionais desses dois grupos é melhor. Há varias estratégias para melhorar os desbalanço das categorias. 
+
+
+
+
+
+
+
+
+
+```{r}
+library(mlr3verse)
+library(tidyverse)
+
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula9/camara_2014.csv"
+dados <- readr::read_csv2(link) %>%
+  mutate_if(is.character, as.factor)
+
+# Define a task
+tsk <- as_task_classif(resultado ~ ., data = dados)
+
+# Cria uma pipeline
+gr <- po("scale") %>>%
+  po("learner", learner = lrn("classif.randomForest", ntree = 100)) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr),
+  resamplings = rsmp("cv", folds = 5)
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.fbeta", "classif.precision", "classif.recall")))
+```
+
+
+***Exercício 9***
+
+1) Cross-validation
+Para esse exercício, usaremos uma base de dados das candidaturas à Câmara dos Deputados em 2014 que contém, entre outros, variáveis como o sexo, a raça, a escolaridade e o status de reeleição das candidaturas, bem como uma dummy (resultado) que indica se a candidatura foi () ou não () eleita (Machado, Campos, e Recch 2020).
+
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula9/camara_2014.csv"
+dados <- readr::read_csv2(link) %>%
+  mutate_if(is.character, as.factor)
+```
+
+
+a) Básico
+Crie uma pipeline para estandardizar variáveis numéricas (ou transformar variáveis categóricas em dummies) com algum modelo de classificação da sua escolha e o valide usando K-fold com k=5 e, depois, com k=10.
+
+```{r}
+
+# Define a task
+tsk <- as_task_classif(resultado ~ ., data = dados)
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>% #primeiro eu estandarizo, depois eu transformo em dummie.
+  po("encode") %>>%
+  po("learner", learner = lrn("classif.randomForest", ntree = 100)) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr),
+  resamplings = rsmp("cv", folds = 5)
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.fbeta", "classif.precision", "classif.recall")))
+```
+
+```{r}
+# K-fold
+design <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr),
+  resamplings = rsmp("cv", folds = 10)
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.fbeta", "classif.precision", "classif.recall")))
+```
+
+b) LOO
+Sorteie apenas algumas observações do banco completo (50, por exemplo) e, em vez de usar K-fold, desta vez use LOO como estratégia de validação (no mlr3, a função chama-se loo).No R talvez seja necessário usar como métrica de validação a classif.ce.
+
+```{r}
+dados_menor <- sample_n(dados,50)
+
+# Define a task
+tsk <- as_task_classif(resultado ~ ., data = dados_menor)
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>% #primeiro eu estandarizo, depois eu transformo em dummie.
+  po("encode") %>>%
+  po("learner", learner = lrn("classif.naive_bayes")) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tsk,
+  learners = list(gr),
+  resamplings = rsmp("loo")
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.ce")))
+
+resultados$aggregate(msr("classif.ce"))
+```
+
+c) Mantendo balanço
+Na base de dados, há muito menos candidaturas eleitas do que não-eleitas. Para evitar que amostras de treino e de teste percam esse balanço original, use K-fold estratificado (no mlr3, basta declarar stratum = variavel na task; no sklearn, use StratifiedKFold).
+
+```{r}
+# Define a task
+tskc <- as_task_classif(resultado ~ ., data = dados, stratum = "reeleicao")
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>% #primeiro eu estandarizo, depois eu transformo em dummie.
+  po("encode") %>>%
+  po("learner", learner = lrn("classif.randomForest", ntree = 100)) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tskc,
+  learners = list(gr),
+  resamplings = rsmp("cv", folds = 5)
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.fbeta", "classif.precision", "classif.recall")))
+```
+
+
+d) Repetindo o processo
+Finalmente, use repeated k-fold para minimizar a variação decorrente do sorteio no particionamento das amostras (no mlr3, com repeated_cv; no sklearn, com RepeatedKFold ou com RepeatedStratifiedKFold).
+
+```{r}
+# Define a task
+tskc <- as_task_classif(resultado ~ ., data = dados, stratum = "reeleicao") 
+#o stratum vc coloca a variável dependente.
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>% #primeiro eu estandarizo, depois eu transformo em dummie.
+  po("encode") %>>%
+  po("learner", learner = lrn("classif.randomForest", ntree = 100)) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tskc,
+  learners = list(gr),
+  resamplings = rsmp("repeated_cv", repeats=10, folds = 5)
+)
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.fbeta", "classif.precision", "classif.recall")))
+
+resultados$aggregate(msrs(c("classif.fbeta", "classif.precision","classif.recall")))
+```
+
+
+Workflow de validação
+Para este exercício, precisaremos separar a nossa amostra de uma forma mais próxima daquela usada em projetos reais: treino, teste e validação. Para tanto:
+
+a) Holdout
+Faça um holdout inicial da base, separando 90% dela para treino e teste e 10% para validação.
+
+```{r}
+dados <- dados %>% 
+  mutate(id = row_number())
+
+dados_valid <- dados %>% sample_frac(0.1)
+
+dados_treinoeteste <- dados %>% 
+  filter(!id %in% dados_valid$id)
+
+dados_treino <- dados_treinoeteste %>% 
+  sample_frac(0.7)
+
+dados_teste <- dados_treinoeteste %>% 
+  filter(!id %in% dados_treino$id) 
+
+#lembrar de tirar a variável ID
+```
+
+
+b) Cross-validation
+Com os 90% restanted da base, treine e valide um modelo usando alguma estratégia de cross-validation. Ao final, quando encontrar o melhor modelo, treine ele em todos os 90% das observações e o valide na base de validação com 10% de observações.
+
+```{r}
+# Define a task
+tskc <- as_task_classif(resultado ~ ., data = dados_treinoeteste, stratum = "reeleicao") 
+#o stratum vc coloca a variável dependente.
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>% #primeiro eu estandarizo, depois eu transformo em dummie.
+  po("encode") %>>%
+  po("learner", learner = lrn("classif.svm", predict_type = "prob")) %>%
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tskc,
+  learners = list(gr),
+  resamplings = rsmp("cv", folds = 5)
+)
+
+resultados <- benchmark(design)
+resultados$aggregate(msrs(c("classif.fbeta", "classif.precision","classif.recall")))
+
+#queria a melhor pipeline, a melhor validação, aí vou para dados de valicação
+
+gr$train(tskc)
+
+#cris uma nova tsk com os dados de validacao
+tsk_validacao <- as_task_classif(resultado ~., data = dados_valid)
+
+#usa o modelo compleo para predizer a amostra de validacao
+pred <- gr$predict(tsk_validacao)
+
+#calcula metricas de validacao na amostra de validacao
+pred$score(msrs(c("classif.prauc", "classif.auc")))
+
+```
+
+
+Usando mais dados
+Neste exercício, vamos voltar à base de dados climático de São Bernardo do Campo e, com o que aprendemos nas últimas aulas, vamos tentar melhorar nosso desempenho na tarefa de predizer temperatura máxima diária. Carregue a base com:
+
+```{r}
+link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+dados2 <- readr::read_csv(link)
+```
+
+
+a) Novo workflow
+Monte um workflow para melhorar o desempenho na tarefa de predizer maximum_temprature. Em particular, considere o seguinte:
+
+```{r}
+#Pré-processar variáveis contínuas (minmax ou estandardização); OK
+#Reduzir dimensionalidade (PCA ou kernelpca); ok
+#Considerar combinações não-lineares (criando polinômios ou usando MARS) #Aula 6
+#Usar ensemble, inclusive com stacking # Aula 7
+#Usar uma estratégia de validação que deixe mais dados para treino (K-fold com um  ou )
+#Considerar a estrutura temporal dos dados (é possível criar uma variável lag de maximum_temprature, o transformar o problema em um de série temporal e usar walk-forward validation)
+
+
+#plotar a temperatura de um dia é parecida com a outra e a sasonalidade por ano.
+dados2 %>% 
+  ggplot(aes(x=date, y=maximum_temprature))+
+  geom_line()
+```
+
+
+```{r}
+#Agora o exercício:
+
+dados3 <- dados2 %>% 
+  mutate(id=1:n()) %>% 
+  mutate(lag_max_temp = lag(maximum_temprature)) %>% 
+  select(-date,-country, -city) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  na.omit()
+
+#definir validacao
+
+dados_valid <- dados3 %>% sample_frac(0.1)
+
+dados_treinoeteste3 <- dados3 %>% 
+  filter(!id %in% dados_valid$id)
+```
+
+
+```{r}
+#vamos para a Pipeline:
+
+# Define a task
+tskc <- as_task_regr(maximum_temprature ~ ., data = dados_treinoeteste3) 
+#o stratum vc coloca a variável dependente.
+
+# Cria uma pipeline
+gr <- 
+  po("scalerange", lower = 0, upper = 1) %>>% #estamos com as variáveis escalonadas
+  po("encode") %>>% 
+  #po("kernelpca", features = 2) %>>% 
+  po("learner", learner = lrn("regr.xgboost", nrounds = 50)) %>% 
+  as_learner()
+
+# K-fold
+design <- benchmark_grid(
+  tasks = tskc,
+  learners = list(gr),
+  resamplings = rsmp("repeated_cv", folds = 5, repeats = 5)
+)
+
+resultados <- benchmark(design)
+resultados$aggregate(msrs(c("regr.rmse")))
+```
+
+
+```{r}
+#queria a melhor pipeline, a melhor validação, aí vou para dados de valicação
+
+gr$train(tskc)
+
+#cris uma nova tsk com os dados de validacao
+tsk_validacao <- as_task_regr(maximum_temprature ~., data = dados_valid)
+
+#usa o modelo compleo para predizer a amostra de validacao
+pred <- gr$predict(tsk_validacao)
+
+#calcula metricas de validacao na amostra de validacao
+pred$score(msrs(c("regr.rmse")))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
