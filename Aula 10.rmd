@@ -1,0 +1,122 @@
+---
+title: "Aula 10"
+author: "Tamiris"
+date: "2022-12-07"
+output: html_document
+---
+
+### Aula 10 - Tuning
+
+### **Introdução**
+
+Qualquer problema supervisionado, como vimos ao longe deste curso, está sujeito ao *trade-off* entre viés e variância: um modelo que aprende a reduzir o viés na estimação de parâmetros a partir de uma amostra está sujeito a aumentar a variância dessa estimativa, isto é, a modelar ruído que não generaliza para outras amostras.
+
+Nesta aula, estudaremos um método *data-driven* para encontrar o ponto ótimo deste *trade-off*: *tuning*. Com ele, poderemos identificar melhores combinações de modelos, hiper-paramêtros e *features* para reduzir viés e variância simultaneamente. Por hiper-parâmetros geralmente nos referimos a configurações que podemos fazer nos modelos para customizar a forma com que parâmetros (i.e., coeficientes ou pesos) serão estimados. Por *tuning*, por sua vez, indicamos o processo de otimizar uma função complexa (ou *black-box*) que possui diferentes *inputs* -- caso de uma *pipeline* -- para encontrar o melhor conjunto de hiper-paramêtros e etapas de pré-processamento com a finalidade de minimizar erro em uma estratégia de validação. *Tuning*, por essa razão, depende de uma boa estratégia de validação (ver a discussão de Neunhoeffer e Sternberg ([2019](https://fmeireles.com/materiais/materiais/aula10.html#ref-neunhoeffer2019cross)) sobre esse ponto).
+
+### **Estratégias**
+
+A ideia básica do *tuning* é a de testar diferentes combinações de hiper-parâmetros -- de forma geral, comparar diferentes variações de *pipelines* -- utilizando uma estratégia apropriada de validação. Em Ciência de Dados, essa parte do trabalho em um projeto é frequentemente chamado de `model selection` (o que também inclui `feature selection`, isto é, teste de diferentes etapas de pré-processamento) e, não à toa, *frameworks* como o `sklearn` em Python usam esse nome para agrupar diferentes classes utilizadas para o teste de *pipelines*.
+
+Dentre as principais estratégias de *tuning*, três são amplamente utilizadas: *grid search*, *random gridsearch* e, mais recentemente, otimização bayesiana. Passaremos por cada uma na sequência.
+
+#### **Gridsearch**
+
+O algoritmo mais básico para encontrarmos configurações de *pipelines* úteis é o *grid search*, que nada mais é o do que o teste exaustivo de todas as combinações possíveis de hiper-parâmetros pré-especificadas. Um exemplo: imagine que queremos testar diferentes versões de um [Random Forest (visto na aula 7)](https://fmeireles.com/materiais/materiais/aula7.html), com proporção maior ou menor de *features* a reter e com maior ou menor número de árvores a serem treinadas. Com *grid search*, é fácil implementar este teste:
+
+Obs. "*features* a reter": como vimos, RF usa um processo de sorteio de variáveis a usar para aumentar a diversidade das árvores fracas, os weak learners.
+
+```{r}
+library(mlr3verse)
+library(mlr3tuning)
+library(tidyverse)
+```
+
+```{r}
+link <- "https://raw.githubusercontent.com/FLS-6497/datasets/main/aula7/eleicoes2000.csv"
+dados <- readr::read_csv2(link) %>%
+  select(-cod_mun_ibge, -nome_municipio) %>%
+  mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Define a task
+tsk <- as_task_classif(partido ~ ., data = dados, positive = "PMDB-PSDB-PFL")
+
+# Cria uma pipeline (e indica parametros para tuning)
+gr <- po("learner", learner = lrn("classif.randomForest"),
+         ntree = to_tune(c(20, 50, 100)),
+         mtry = to_tune(c(3, 7, 11))) %>%
+  as_learner()
+
+# Criamos uma instancia (parecido com um design grid)
+instance <- ti(
+  task = tsk,
+  learner = gr,
+  resampling = rsmp("cv", folds = 5),
+  measures = msr("classif.fbeta"),
+  terminator = trm("none")
+)
+
+# Tuning
+tuner <- tnr("grid_search")
+tuner$optimize(instance)
+
+# Os resultados ficam salvos em um tibble
+as.data.table(instance$archive) %>%
+  as_tibble()
+
+# Retreina a melhor pipeline na base completa
+gr$param_set$values <- instance$result_learner_param_vals
+gr$train(tsk)
+```
+
+Há dois detalhes importantes a notar quanto ao procedimento acima. Em primeiro lugar, é necessário especificar quais hiper-parâmetros iremos testar; em `R`, fazemos isso com a função `to_tune` e, em `Python`, usando um dicionário. Isso declarado, a função ou classe de *grid search* testará todas as combinações possíveis de hiper-parâmetros e retornará *scores*, de acordo com a métrica de validação definida, para identificarmos qual foi a melhor combinação entre as testadas. Em segundo lugar, *grid search* calcula *scores* com base em alguma estratégia de validação, geralmente *K-fold cross validation* com k=5 por padrão -- mas vale notar que essa nem sempre é a melhor estratégia, como vimos na aula anterior.
+
+Obs. Note que, em `R`, o `mlr3` retorna as melhores configurações e, ao fim, é necessário retreinar o modelo nos dados completos.
+
+#### 
+**Random gridsearch**
+
+Quando temos muitas combinações possíveis de hiper-parâmetros para testar, explorar cada uma delas pode ser inviável. Por conta disso, outra estratégia comum de *tuning* é sortear aleatoriamente apenas algumas combinações para teste. Em particular, geralmente esse procedimento é feito definindo-se um espaço de hiper-parâmetros maior. Implementar essa estratégia pode ser feito assim:
+
+```{r}
+# Cria uma pipeline com um espaço de hiper-parametros maior
+gr <- po("learner", learner = lrn("classif.randomForest"),
+         ntree = to_tune(lower = 10, upper = 300),
+         mtry = to_tune(lower = 3, upper = 11)) %>%
+  as_learner()
+
+# Criamos uma instancia
+instance <- ti(
+  task = tsk,
+  learner = gr,
+  resampling = rsmp("cv", folds = 5),
+  measures = msr("classif.fbeta"),
+  terminator = trm("evals", n_evals = 10)
+)
+
+# Tuning
+tuner <- tnr("random_search")
+tuner$optimize(instance)
+```
+
+#### **Otimização bayesiana**
+
+*Grid search* e *random grid search*, como dá para perceber pelos exemplos anteriores, não são as formas mais eficientes de se encontrar bons hiper-parâmetros -- ambas gastam muito tempo e recursos investigando configurações ruins, isto é, elas não adotam otimização para fazer uma busca eficiente por uma configuração ideal. Há diferentes soluções que atacam este problema mas, tanto por ser mais utilizada quanto por ter implementação fácil em `R` e `Python`, uma que estudaremos em maior detalhe agora é a otimização bayesiana. De forma resumida, otimização bayesiana é uma maneira de encontrar, rápida e eficientemente, boas configurações dentro de um espaço de hiper-parâmetros potencialmente grande. Para tanto, a otimização assume um *prior* vago sobre a função sendo otimizada e, depois de ver dados de validação das primeiras interações, atualiza a *posterior* para sugerir próximos valores mais promissores a serem testados -- o que é diferente de selecionar aleatória ou sequencialmente combinações a serem testadas, como ocorre com *random grid search* ou *grid search*, respectivamente. É por isso que, no geral, otimização bayesiana tende a reduzir o tempo de *tuning*, especialmente quando há um espaço de hiper-parâmetros muito grande e quando a *pipeline* que usamos é complexa (e lenta para treinar). Implementá-la em `R` ou em `Python` é bastante simples utilizando os nossos *frameworks*:
+
+Obs. Para quem usa `R`, instalaremos o pacote `mlr3mbo` e o `DiceKriging` com `install.packages(c("mlr3mbo", "DiceKriging"))`
+
+```{r}
+# Criamos uma instancia
+instance <- ti(
+  task = tsk,
+  learner = gr,
+  resampling = rsmp("cv", folds = 5),
+  measures = msr("classif.fbeta"),
+  terminator = trm("evals", n_evals = 10)
+)
+
+# Tuning
+tuner <- tnr("mbo")
+tuner$optimize(instance)
+```
