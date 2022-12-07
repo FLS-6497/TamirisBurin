@@ -1,0 +1,282 @@
+---
+title: "Exercícios Aula 10"
+author: "Tamiris Burin"
+date: "2022-11-30"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+### Exercícios 10
+
+Aula 10
+
+#### **1) Tuning** 
+
+Neste exercício usaremos uma base de dados com decisões da Suprema Corte
+americana que contém informações sobre os casos julgados e posições dos
+juízes em suas arguições, entre outros (Kaufman, Kraft, e Sen 2019). No
+paper1, o resultado de acurácia encontrado é de 74% com um AdaBoost. Seu
+desafio é tentar replicar, e potencialmente superar, esse resultado --
+ou, melhor, ver se é possível replicar e superar o mesmo resultado
+montando uma pipeline do zero. Detalhes importantes:
+
+#Alguns problemas devem ficar nítidos a essa altura ponto do curso.
+
+-   Nosso target é a variável winner, que indica se uma dada petição foi
+    vitoriosa no plenário.
+
+-   Teste outras métricas de validação (note que há o dobro de decisões
+    positivas na base)
+
+-   Pense na melhor estratégia de validação a usar (o estudo original
+    usa 10-fold cross validation) e justifique sua escolha (em
+    comentários no código)
+
+-   Analise as variáveis na base e veja se não é possível pré-processar
+    (ou mesmo remover) algumas que talvez sejam problemáticas
+
+-   Teste diferentes pipelines, com diferentes modelos e
+    hiper-parâmetros.
+
+Os dados já limpos estão no GitHub do curso:
+
+```{r}
+link <- "https://github.com/FLS-6497/datasets/raw/main/aula10/supreme.csv"
+dados2 <- readr::read_csv2(link) %>%
+  mutate_if(is.character, as.factor)
+```
+
+```{r}
+library(adabag)
+```
+
+```{r}
+dados2 <- dados2 %>% 
+  mutate_at(c("jurisdiction", "certReason", "issueArea"), as.factor) #mudar só algumas
+```
+
+```{r}
+# Define a task
+tsk <- as_task_classif(winner ~ ., data = dados2)
+
+# Cria uma pipeline (e indica parametros para tuning)
+boost <- lts(lrn("classif.xgboost"))
+
+gr <- po("encode") %>>% #tranforma valores em dummies
+boost %>% 
+  as_learner()
+
+# Criamos uma instancia (parecido com um design grid)
+instance <- ti(
+  task = tsk,
+  learner = gr,
+  resampling = rsmp("repeated_cv", repeats=3, folds = 10), # crossvalidation
+  measures = msr("classif.acc"), # métrica
+  terminator = trm("evals", n_evals = 10)
+)
+
+# Tuning
+tuner <- tnr("random_search") # estratégia de tunning, Grid_search testa exaustivmente todas as variáveis. Random_search 
+tuner$optimize(instance)
+
+# Os resultados ficam salvos em um tibble
+as.data.table(instance$archive) %>% #resultados salvos em uma base de dados
+  as_tibble()
+
+# Retreina a melhor pipeline na base completa
+gr$param_set$values <- instance$result_learner_param_vals # salva os melhores valores
+gr$train(tsk)
+
+```
+
+\#"classif.xgboost": o target de cada arvore são os resíduos da arvore
+anterior. É boa, mas propensa ao overfeature. Tenho que ter boa
+validação.
+
+\#"po("smote")": é como seu pegasse uma observação que existe e fizesse
+um ruído.
+
+#na validação, faltou repetir no mínimo umas 3 vezes. Com o repeat
+cross-validation, seria ideal. Tem alumas variáveis que não estãi
+operacionalizadas da forma corret também, temos duas variáveis
+categóricas, mas que foram transformadas em número e podem ter ganho um
+significado ordinal. O ideal seria transformar em dummie.
+
+#o resultado que está no paper é sensível à estratégia de validação
+utilizada. Como conseguimos melhorar? A variável target é winner e eles
+usam accurácia, o que não é muito bom se as categorias não são bem
+distribuídas (de aprovação e reprovação da Suprema Corte).
+
+#### 2) Tuning com text as data 
+
+Neste exercício revisitaremos os dados do Projeto 1 para aplicar tuning
+às pipelines que vocês já montaram anteriormente (é possível ir no
+GitHub consultar seu código). Particularmente, tuning será útil para
+identificar melhores combinações de hiper-parâmetros de
+pré-processamento -- número ou proporção mínima de ocorrência de
+palavras, número mínimo de ocorrência de uma palavra entre documentos,
+tamanho do em , etc.
+
+```{r}
+link <- "https://github.com/FLS-6497/datasets/blob/main/projeto1/discursos_pres_internacionais.csv?raw=true"
+discursos <- readr::read_csv2(link)
+```
+
+```{r}
+tsk <- as_task_classif(presidente ~ discurso, data = discursos)
+```
+
+```{r}
+gr <- po("textvectorizer",
+         param_vals = list(remove_punct = T,
+                           remove_numbers = T, #não remover numeros, melhora tbm.
+                           min_termfreq = to_tune(0,0.02),
+                           max_termfreq = to_tune(0.7, 1), #quanto mais baixo o teto, melhor
+                           termfreq_type = "prop")) %>>% 
+  po("learner", learner = lrn("classif.naive_bayes", predict_type = "prob")) %>% 
+  as_learner()
+```
+
+```{r}
+library(mlr3mbo)
+```
+
+```{r}
+#Tuning
+tuner <- tnr("mbo")
+tuner$optime(instance)
+```
+
+```{r}
+#os resultados ficam salvos em um tibble
+as.data.table(instance$archive) %>%
+  as_tibble()
+```
+
+#### 3) Melhorando as predições climáticas 
+
+Neste exercício final, usaremos tuning para dar um passo adicional na
+tarefa de predizer a temperatura máxima diária em São Bernardo do Campo
+(SP). Para isso, use seu código da última aula e o adapte para fazer
+tuning de hiper-parâmetros (é possível usar o dicionário do mlr3 já com
+combinações prontas de hiper-parâmetros).
+
+```{r}
+link <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Sao%20Bernardo%20Do%20Campo_Cleaned.csv"
+dados3 <- readr::read_csv(link)
+```
+
+```{r}
+#Agora o exercício:
+
+dados3 <- dados2 %>% 
+  mutate(id=1:n()) %>% 
+  mutate(lag_max_temp = lag(maximum_temprature)) %>% 
+  select(-date,-country, -city) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  na.omit()
+
+#definir validacao
+
+dados_valid <- dados3 %>% sample_frac(0.1)
+
+dados_treinoeteste3 <- dados3 %>% 
+  filter(!id %in% dados_valid$id)
+
+#vamos para a Pipeline:
+
+# Define a task
+tskc <- as_task_regr(maximum_temprature ~ ., data = dados_treinoeteste3) 
+#o stratum vc coloca a variável dependente.
+
+
+
+
+#queria a melhor pipeline, a melhor validação, aí vou para dados de valicação
+
+gr$train(tskc)
+
+#cris uma nova tsk com os dados de validacao
+tsk_validacao <- as_task_regr(maximum_temprature ~., data = dados_valid)
+
+#usa o modelo compleo para predizer a amostra de validacao
+pred <- gr$predict(tsk_validacao)
+
+#calcula metricas de validacao na amostra de validacao
+pred$score(msrs(c("regr.rmse")))
+
+```
+
+```{r}
+dados3 <- dados3 %>% 
+  mutate(id=1:n()) %>% 
+  mutate(lag_max_temp = lag(maximum_temprature)) %>% 
+  select(-date,-country, -city) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  na.omit()
+
+#definir validacao
+
+dados_valid <- dados3 %>% sample_frac(0.1)
+dados_treinoeteste3 <- dados3 %>% 
+  filter(!id %in% dados_valid$id)
+```
+
+```{r}
+#Pipeline:
+
+# Define a task
+tskc <- as_task_regr(maximum_temprature ~ ., data = dados_treinoeteste3) 
+#o stratum vc coloca a variável dependente.
+
+glmnet <- lts(lrn("regr.glmnet"))
+
+# Cria uma pipeline
+gr <- 
+  po("scale") %>>%
+  po("encode") %>>% 
+  glmnet %>% 
+  as_learner()
+
+instance <- ti(
+  task = tskc,
+  learner = list(gr),
+  resampling = rsmp("repeated_cv", folds = 5, repeats = 2),
+  measures = msr("regr.rmse"),
+  terminator = trm("evals", n_evals = 10)
+)
+
+# Tuning
+tuner <- tnr("random_search")
+tuner$optimize(instance)
+
+# Os resultados ficam salvos em um tibble
+as.data.table(instance$archive) %>% #resultados salvos em uma base de dados
+  as_tibble()
+
+# Retreina a melhor pipeline na base completa
+gr$param_set$values <- instance$result_learner_param_vals # salva os melhores valores
+gr$train(tskc)
+```
+
+Ao final, valide a sua melhor pipeline com dados de Campinas:
+
+```{r}
+campinas <- "https://raw.githubusercontent.com/jacobwright32/Web_Scraper_AI_Core_Project/bb4865ae568e23ab8fadb6ea58cf117df2164ef3/web%20scraping/Cleaned%20Data/Brazil_Campinas_Cleaned.csv"
+campinas <- readr::read_csv(campinas)
+```
+
+```{r}
+gr$train(tskc)
+
+#cris uma nova tsk com os dados de validacao
+tsk_validacao <- as_task_regr(maximum_temprature ~., data = campinas)
+
+#usa o modelo compleo para predizer a amostra de validacao
+pred <- gr$predict(tsk_validacao)
+
+#calcula metricas de validacao na amostra de validacao
+pred$score(msrs(c("regr.rmse")))
+```
