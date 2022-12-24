@@ -1,0 +1,226 @@
+---
+title: "Projeto 2"
+author: "Bianca Berti e Tamiris Burin"
+output: html_document
+---
+
+#### 1. Pacotes necessários e a separação de teste e treino
+
+Este projeto propõe utilizar aprendizado profundo para classificar imagens de satélite de diferentes locais de votação do Brasil. O objetivo é determinar se a localidade de cada imagem corresponde a uma área urbana ou rural do país.
+
+Compostas por camadas de funções não-lineares, as redes de aprendizado profundo extraem múltiplos aspectos das imagens consideradas e de forma bastante autônoma em termos de tratamento manual. Isso implica em classificações de imagens promissoras e aplicáveis a diferentes tipo de problemas.
+
+Para este projeto, utilizamos as seguintes \*libraries\*:
+
+```{r}
+library(keras)
+library(tensorflow)
+```
+
+Agora carregamos as imagens e separamos teste e treino.
+
+Nessa etapa, propomos a definição do seed em 44, ou seja, um conjunto de 44 valores fixos extraídos da distribuição. Comprimimos as imagens para o tamanho de 200 x 200 pixels. E determinamos o batch_size de 64, que corresponde ao número de amostras a serem trabalhadas antes de atualizar os parâmetros do modelo.
+
+```{r}
+treino <- image_dataset_from_directory(
+  "~/Desktop/projeto2/mapas/treino",
+  validation_split = 0.2,
+  subset = 'training',
+  label_mode = 'categorical',
+  seed = 44,
+  image_size = c(200, 200),
+  batch_size = 64
+)
+```
+
+```{r}
+teste <- image_dataset_from_directory(
+  "~/Desktop/projeto2/mapas/teste",
+  validation_split = 0.2,
+  subset = 'validation',
+  label_mode = 'categorical',
+  seed = 44,
+  image_size = c(200, 200),
+  batch_size = 64
+)
+```
+
+#### **2. Testando a primeira arquitetura**
+
+Para nossa primeira arquitetura, utilizamos uma rede convolucional. Esse tipo de arquitetura é composta por camadas de filtros, que são porções dos dados recortadas em relações de proximidade e que, transformadas em matrizes de pesos distribuídos aleatoriamente e depois recalculados, são ferramentas muito utilizadas para detectar padrões em conjuntos de imagens.
+
+A Rede Convolucional aplica transformações de convolução, em que os filtros se movimentam em diferentes partes da imagem, para encontrar determinados padrões.
+
+Então na arquitetura desta rede, utilizamos 64 filtros de matrizes 6x6, nas imagens de 200 pixels, com 3 canais de classificação, já que estes servem para captar as cores da imagem. A função "relu" e "softmax".
+
+Na última camada, que faz o desamento dos resultados das duas anteriores, utilizamos uma função Softmax, que é bastante conhecida para classificação de imagens, e a definição de 2 units, que corresponde ao agrupamento da probabilidade em 2 resultados, como localidade urbana ou rural.
+
+```{r}
+# Define uma rede convolucional (filtro de 3x3)
+model <- keras_model_sequential()
+model %>%
+  layer_conv_2d(filters = 64, kernel_size = c(6, 6),
+                activation = "relu", input_shape = c(200, 200, 3)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 2, activation = "softmax")
+```
+
+Então compilamos o modelo utilizando o optimizer "adam", que vai de trás para frente corrigindo os pesos atribuídos, e uma métrica de validação específica para esse tipo de classificação, o "crossentropy".
+
+```{r}
+# Compila o modelo
+model %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+```
+
+E, por fim, treinamos o modelo com o número de 10 epochs, um hiperparâmetro que define o número de vezes que o algoritmo de aprendizado funcionará em todo o conjunto de dados de treinamento.
+
+```{r}
+# Treina
+m1 <- model %>% fit(
+  treino,
+  validation_data = teste,
+  epochs = 10
+)
+
+plot(m1)
+
+```
+
+Com esta primeira arquitetura, tivemos um resultado acima de .9 de acurácia, mas desconfiamos se poderíamos melhorar os resultados com uma compactação um pouco maior, então testamos um número maior de pixels na próxima seção.
+
+#### **3. Testando uma compactação alternativa**
+
+Com image_size, alteramos a compactação da imagem para 256 pixels e replicamos a arquitetura elegida anteriormente.
+
+```{r}
+treino2 <- image_dataset_from_directory(
+  "~/Desktop/projeto2/mapas/treino",
+  validation_split = 0.2,
+  subset = 'training',
+  label_mode = 'categorical',
+  seed = 44,
+  image_size = c(256, 256),
+  batch_size = 64
+)
+```
+
+```{r}
+teste2 <- image_dataset_from_directory(
+  "~/Desktop/projeto2/mapas/teste",
+  validation_split = 0.2,
+  subset = 'validation',
+  label_mode = 'categorical',
+  seed = 44,
+  image_size = c(256, 256),
+  batch_size = 64
+)
+```
+
+```{r}
+# Define uma rede convolucional (filtro de 6x6)
+model <- keras_model_sequential()
+model %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(6, 6),
+                activation = "relu", input_shape = c(256, 256, 3)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 2, activation = "softmax")
+```
+
+```{r}
+# Compila o modelo
+model %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+```
+
+```{r}
+# Treina
+m2 <- model %>% fit(
+  treino2,
+  validation_data = teste2,
+  epochs = 10
+)
+
+plot(m2)
+```
+
+Ao ajustarmos para 256 pixels, os resultados apresentaram indícios de ruídos e atenção a detalhes genéricos pela piora da acurária no início da rodagem, mesmo que a acurária tenha melhorado ligeiramente no resultado final.
+
+#### **4. Testando uma segunda arquitetura**
+
+Considerando que quanto maiores os filtros, mais complexa a rede neural é, e maior é o risco de overfitting nos dados, propomos o teste de uma arquitetura mais simples. Para balancearmos os pixels que foram aumentados, testaremos três alterações:
+
+1.  Simplificar a matrix com a camada de Max Pooling 2D, que é utilizada para dados espaciais 2D e reduz a amostra da entrada ao longo de suas dimensões espaciais (altura e largura) a partir dos valores máximos das matrizes de entrada;
+
+2.  Aplicar uma camada de Dropout, para que sejam diminuídas as unidades de entrada. Esta camada, funciona definindo as unidades de entrada com pela frequência de cada etapa do treinamento, o que também ajuda a evitar o overfitting;
+
+3.  Aumentar o número de "epochs" para 30, facilitando que o algorítmo de aprendizado seja reexecutado 30 vezes até que o erro do modelo tenha seja minimizado. A literatura e outros tutoriais mostram que eles podem ser configurados para 10, 100, 500, 1000 ou maiores, mas considerando nossa capacidade de processamento, triplicarmos a arquitetura anterior parece um teste razoável.
+
+```{r}
+# Define uma rede convolucional (filtro de 3x3)
+model <- keras_model_sequential()
+model %>%
+  layer_max_pooling_2d(pool_size = c(2,2)) %>%
+  
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3),
+                activation = "relu", input_shape = c(256, 256, 3)) %>%
+  
+  layer_dropout(0.25) %>% 
+  
+  layer_flatten() %>%
+  layer_dense(units = 2, activation = "softmax")
+```
+
+```{r}
+# Compila o modelo
+model %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+```
+
+```{r}
+# Treina
+m3 <- model %>% fit(
+  treino2,
+  validation_data = teste2,
+  epochs = 30
+) 
+  
+plot(m3)
+```
+
+Verificamos que os ajustes de simplificação foram eficientes e conseguiram melhorar significativamente a acurácia da primeira e da segunda arquitetura. A métrica de acurácia obtida neste modelo está em torno de .99.
+
+#### 5. Validação da arquitetura elegida
+
+Por fim, aplicamos o modelo no conjunto de imagens pré-selecionadas para a validação. Cabe notar aqui que o keras chama de "validação" o processamento de teste, e de "avaliação" o processamento que costumamos chamar de validação.
+
+```{r}
+valid <- image_dataset_from_directory(
+  "~/Desktop/projeto2/mapas/validacao",
+  label_mode = 'categorical',
+  seed = 44,
+  image_size = c(256, 256),
+  batch_size = 64
+)
+```
+
+```{r}
+# Avalia
+
+val <- model %>% 
+  evaluate(valid)
+```
+
+Os resultados da validação apresentam uma acurácia média maior que 0.8, o que pode ser satisfatório ao problema proposto, considerando o instrumental apresentado e a capacidade de processamento da máquina utilizada neste projeto.
