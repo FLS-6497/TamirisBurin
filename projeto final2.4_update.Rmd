@@ -1,0 +1,482 @@
+---
+title: "Going with the Flow? O alcance de tendências sistêmicas na diplomacia presidencial brasileira"
+author: "Tamiris Burin e Bianca Berti"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library ("dplyr")
+library ("tidyverse")
+library("tidylog")
+library("knitr")
+library("lubridate")
+```
+
+### **1. Introdução**
+
+Chefes de Estado dão materialidade à política externa das nações. São eles que constituem a face pública do país no exterior, gerenciam crises e cúpulas internacionais, centralizam processos e tomam decisões difíceis de serem revertidas por outros atores da dinâmica política. No Brasil estudos recentes têm dado atenção às preferências presidenciais para a análise da política externa, dentre os quais a presidencialização da condução externa é a ideia mais prevalente entre o campo. Uma gama de trabalhos sugere que ao longo das últimas décadas o protagonismo da diplomacia brasileira tem dado lugar ao envolvimento mais direto das figuras presidenciais na definição da inserção externa do país (Danese 1999; Cason and Power 2009; Figueira 2010; Pinheiro 2009).
+
+Praticamente um sinônimo de diplomacia presidencial, o volume das viagens presidenciais é a principal estimativa da atenção presidencial aos temas da política externa brasileira (Ribas and Faria 2011). De fato, presidentes alocam largas porções de tempo a suas viagens internacionais, e o destino ou momento pelo qual líderes decidem viajar parecem revelar muito das suas prioridades. Em visitas e encontros de cúpulas internacionais, presidentes buscam estreitar relações comerciais, costurar coalisões e endereçar agendas transnacionais. Mas líderes não atendem a esses eventos na mesma proporção, e cada presidência da história recente brasileira trouxe variações significativas na frequência desse tipo de empreendimento.
+
+Um exemplo ilustrativo é do protagonismo do presidente Lula na política externa brasileira e a ideia muito difundida entre meios políticos e acadêmicos sobre o triunfo da diplomacia presidencial no período. A principal tese da literatura traz que as características da liderança teriam sido determinantes a sua diplomacia presidencial, revertendo tanto um prestígio internacional para Lula como uma maior projeção do Brasil no cenário global. Avaliada em seus resultados concretos, o impacto que a diplomacia presidencial dos governos Lula teve no comércio e no investimento mostram efeitos pouco eficazes (Valente 2020) ou nenhum efeito (Gonçalves 2017).
+
+A principal hipótese é a que o Brasil surfa em uma tendência de aumentos e quedas nas viagens presidenciais do mundo todo e que os trabalhos que analisam esses indicadores sozinhos estão inferindo conclusões equivocadas sobre os líderes ou sobre o ativismos da política externa do Brasil de modo geral. Neste trabalho, buscamos construir um modelo suficientemente preditivo sobre as viagens de líderes de um grupo de nações proeminentes e representativas no cenário internacional para, em seguida, verificar se as previsões realizadas por esse modelo sobre os dados brasileiros, no momento de validação, tenderiam a produzir taxas similares de acerto.
+
+Caso seja verificado um efeito similar na previsão do Brasil com base nos dados de outras nações, compreendemos que os fatores que influenciam a frequência de viagens internacionais de líderes seriam, em realidade, mais similares entre diferentes países do que distintos, não sendo tão preponderantes as diferenças próprias da personalidade ou da vontade de cada líder, como parte da literatura sobre os líderes brasileiros parece sugerir.
+
+### 2. Breve revisão da literatura
+
+Operacionalizar a diplomacia presidencial pelo número de viagens dos mandatários, porém, costuma vir acompanhada de três problemas. O primeiro é em relação às conclusões que o indicador permite chegar, algo que Guillon Albuquerque (1996) aponta sobre os primeiros estudos que trazem as viagens como um indicador. De acordo com Guillon, se a prática da diplomacia presidencial caracteriza essencialmente a condução pessoal dos assuntos externos pela presidência, a quantidade de visitas e viagens permanece muito distante de atestar a influência efetiva do líder (Preto 2006). O segundo e mais frequente problema entre os estudos é que o uso do indicador de viagens não acompanha a avaliação empírica do que há de voluntário e de determinante no comportamento da variável. Os trabalhos até mencionam alguns fatores internos e externos que teriam influência na programação dessa agenda, mas não lidam com esses fatores empiricamente antes associar as viagens e visitas a um ativismo da política externa brasileira em particular, ou mesmo ao envolvimento pessoal do presidente nas relações exteriores do país (Brace and Hinckley 1993; Cavari and Ables 2019; Doherty 2009; Lebovic and Saunders 2016).
+
+Mas então 1) O que explica a variação nas viagens e visitas entre presidentes e para cada presidente? 2) Essas ações são padronizadas ao longo do mandato? 3) A variação nas viagens e visitas ressoam nas viagens presidenciais brasileiras? Para este trabalho, propomos abordar, à princípio, a terceira pergunta, e, opcionalmente, a segunda e primeira conforme possibilite nosso esforço de coleta dos dados empíricos.
+
+As variáveis que compilamos para este estudo são viagens dos Chefes de Estado de um grupo representativo de países, que tentam espelhar a tendência mais ampla das visitas oficiais de líderes pelo mundo. A dimensão efetiva do volume de viagens de líderes brasileiros em perspectiva comparada nunca foi explorada pela literatura. O desenvolvimento teórico do campo sugere que há outras variáveis que podemos considerar. À nível internacional, é possível afirmar que, desde as últimas décadas, presidentes do mundo todo aumentaram a frequência das suas viagens internacionais, os países que visitam e o tempo gasto no exterior. Consistente à tese do presidente pós-moderno (Smith 1997), líderes tem entendido ainda mais importante viajar para países estrangeiros depois do rápido aumento da globalização desde o fim da Guerra Fria. O que é crucial nessa dimensão é a que ponto as mudanças ou conjunturas sistêmicas são espelhadas em um país específico como o Brasil.
+
+À nível doméstico, há vários fatores potenciais porque Presidentes formam compromissos de viagens a depender obviamente de sua agenda interna. Os trabalhos que abordam determinantes internos das viagens presidenciais, porém, sofrem geralmente de pouco consenso. Os que abordam crises políticas e econômicas apresentaram efeitos ambivalentes, por ex.: há estudos que corroboram para a tese célebre de Aaron Wildavsky (1966), de que os presidentes que têm pouco sucesso em suas agendas domésticas tendem a viajar mais pelo mundo já que entraves os impelem para o que podem influenciar quando enfrentam um governo dividido ou um congresso polarizado. Outros para o argumento contrário de que durante crises eles evitariam sair do país por entenderem e buscarem transmitir que problemas domésticos vêm em primeiro lugar (Lebovic and Saunders 2016).
+
+O calendário eleitoral tende a afetar essas atividades uma vez que presidentes em exercício costumam se concentrar em reeleições (Brace and Hinckley 1993; Doherty 2009), assim como viajam mais nos segundos mandatos, especialmente nos últimos dois anos quando a construção de legados e reputação individual é mais premente (Charnock, Mccann, and Tenpas 2012). Cavari, A., & Ables, M. (2019) fizeram um levantamento empírico das viagens presidenciais americanas e indicam haver um momento político particularmente relevante à frequência de viagens dos líderes. Anos eleitorais em que o líder de ocasião disputa a sua releição. E os anos de "*Lame Duck*", período dos dois últimos anos de um chefe de estado em que não pode constitucionalmente disputar um mandato consecutivo. Esses anos tendem a ter mais viagens externas em razão da pura construção de legados dos presidentes.
+
+### 3. Construção do banco de dados e metodologia
+
+#### 3.1 Viagens internacionais feitas por chefes de estado e de governo estrangeiros e do Brasil
+
+O conjunto de dados analisado corresponde a um banco original, desenvolvido com base em um grupo de países estrangeiros razoavelmente representativos do cenário global e que dispusessem de informações consistentes sobre as viagens internacionais de seus mandatários. Como variável dependente a ser analisada, o banco conta com a duração das viagens internacionais realizadas por chefes de estado e de governo estrangeiros de 2000 a 2022 (`daysbyyear`).
+
+Os registros das viagens de líderes dos Estados Unidos são mantidos pelo Departamento de Estado, as viagens dos líderes chineses podem ser rastreadas pelo Ministério de Relações Exteriores da China, e os demais dados foram coletados nas agendas dos líderes de cada país, que estão disponíveis nos portais oficiais dos governos e na Wikipédia.
+
+Os dados incluem uma variável que discerne as viagens destinadas a visitas de Estado e reuniões multilaterais (`tmeeting`), como a Assembleia Geral das Nações Unidas em Nova York ou a Cúpula da Organização de Cooperação de Xangai na China, que muitas vezes incorporam elementos bilaterais e refletem o envolvimento geral dos páises em assuntos globais. Além disso, também incluem uma variável que determina a quantidade de países diferentes visitados em cada ano (`visitedcountries`).
+
+O banco ainda inclui variáveis que capturam aspectos econômicos de cada país para o respectivo ano de referência, como o PIB per capita em dólares (`gdpcapita`) e o saldo da balança comercial em porcentagem do PIB (`external_balance`). Estes dados foram obtidos majoritariamente das bases de dados do Banco Mundial, à exceção dos dados para o ano de referência de 2022, que ainda não foram consolidados e publicados pelo órgão. Nesse caso, coletamos os dados para 2022 a partir do mais recente relatório do *World Economic Outlook Database*, do Fundo Monetário Internacional (FMI), que realiza estimativas preditivas suficientemente confiáveis sobre essas informações, com base nos dados dos anos anteriores e de tendênciais verificadas no cenário econômico internacional e de cada país.
+
+Em relação aos aspectos políticos internos que possam influenciar a frequência das viagens, como determinado na literatura pertinente, foram incluídas: uma variável binária sobre a ocorrência de eleições no ano analisado (`election_year`), e outra variável binária que captura se o líder seria considerado "lame duck" naquele ano, isto é, se no momento da viagem ele estaria em um dos dois últimos anos de seu mandato para o qual não poderá concorrer à reeleição (`lame_duck`). Por último, incluímos também uma variável que determina se o líder para o qual o registro de viagem se refere é ou não o chefe de estado do país (`coffice`).
+
+Trabalhamos, assim, com 3 grupos de variáveis:
+
+**1)** as relacionadas à execução das viagens propriamente, como a variáveis do líder em questão e da justificativa oficial, como o encontro bilateral ou multilateral que o líder está se apresentando pessoalmente;
+
+**2)** as relacionadas a aspectos políticos do país em questão, se o líder em questão é chefe de estado, se é candidato a reeleição e se o líder está nos dois últimos anos de um madato impedido de se reeleger;
+
+**3)** duas variáveis econômicas como PIB *per capita* e saldo da balança comercial.
+
+A seguir, separamos a base de treino e teste da base de validação, composta pelos dados referentes às viagens de líderes brasileiros. Também tratamos e adequamos as variáveis, bem como exploramos de forma breve e preliminar os dados da base de treino e teste, para avaliar se existem tendências observáveis a partir das visualizações gráficas produzidas.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+world <- read.csv2("worldleaders4.2.csv", dec = ",", encoding = 'latin1')
+world$start <- world$start %>% as.Date(start, format= '%d/%m/%Y')
+world$end <- world$end %>% as.Date(end, format= '%d/%m/%Y')
+world$days <- as.numeric(world$end - world$start + 1)
+world
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+brazil <- world %>% 
+  filter(s_year >=2002 & country=="Brazil")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+world <- world %>% 
+  filter(!(s_year >=2002 & country=="Brazil"))
+world
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+world$receptor <- factor(world$receptor)
+world$creceptor <- as.numeric(world$receptor)
+
+world$leader <- factor(world$leader)
+world$cleader <- as.numeric(world$leader)
+
+world <- world %>% 
+  group_by(s_year, country) %>%
+  mutate("daysbyyear" = sum(`days`)) %>%
+  ungroup()
+
+world2 <- world %>% 
+  mutate(`meeting`= str_detect(`description`, "summit|Heads|Session|Forum|United Nations"),
+         `meeting`= case_when(`meeting`==T~1,
+                     `meeting`==F~0),
+         `coffice`=str_detect(`office`, "President"),
+         `coffice`= case_when(`coffice`==T~1,
+                     `coffice`==F~0))
+
+world2 <- world2 %>%
+  mutate(across(c(s_year, country), ~ factor(.x)))
+world2
+```
+
+```{r}
+world3 <- world2 %>%
+  select(s_year, election_year,lame_duck, gdpcapita, external_balance, country, coffice, daysbyyear, meeting) %>% 
+  group_by(country, s_year) %>%
+  add_column(visitedcountries=1) %>% 
+  summarize(across(c(election_year,lame_duck, gdpcapita, external_balance, coffice, daysbyyear), mean, na.rm=TRUE),
+            `tmeeting`=sum(meeting, na.rm=TRUE),
+             `visitedcountries`=sum(visitedcountries, na.rm=TRUE))
+world3
+```
+
+```{r echo=FALSE, fig.height=7, fig.width=12, message=FALSE, warning=FALSE}
+world_grafico1 <- world %>% 
+  mutate(`s_year`=factor(`s_year`, ordered=TRUE)) %>% 
+  group_by(s_year) %>% 
+  summarise(`daysbyyear`= round(mean(`daysbyyear`))) %>%
+  ggplot(aes(x=`s_year`, y=`daysbyyear`, group=1), size=0.95) +
+  geom_line()+
+  theme(legend.position="bottom")+
+  labs(
+    title = "Viagens internacionais (2000-2022)",
+    subtitle = "Dias de viagem",
+    caption = " ",
+    x = "",
+    y = " ",
+    colour="",
+    legend= (na.translate=T))+
+    guides(col = guide_legend(nrow = 2))
+
+world_grafico1
+```
+
+```{r echo=FALSE, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
+world_grafico2 <- world %>% 
+  mutate(`s_year`=factor(`s_year`, ordered=TRUE)) %>% 
+  group_by(s_year, country) %>% 
+  ggplot(aes(x=`s_year`, y=`daysbyyear`, group=`country`, colour=`country`), size=0.95) +
+  geom_line()+
+  theme(legend.position="bottom")+
+  labs(
+    title = "Viagens internacionais (2000-2022)",
+    subtitle = "Dias de viagem",
+    caption = " ",
+    x = "",
+    y = " ",
+    colour="",
+    legend= (na.translate=T))+
+    guides(col = guide_legend(nrow = 2))
+
+world_grafico2
+```
+
+Notavelmente, como podemos verificar no primeiro gráfico, os líderes viajaram com menos frequência entre os anos de 2011 e 2012, como demonstrado nas quedas observadas nas viagens dos Estados Unidos, Rússia, China e a África do Sul, bem como entre 2019 e 2021, em decorrência do período da pandemia de Covid-19. Os líderes tiveram um relativo aumento na frequência de viagens em 2010, assim como em 2015 e 2018. Observamos, ainda, que 2014 é o ano em que mais se viajou no total.
+
+#### 3.2 Abordagens de aprendizado de máquina
+
+```{r message=FALSE}
+library(mlr3learners)
+library(mlr3verse)
+library(mboost)
+library(mlr3extralearners)
+library(kableExtra)
+```
+
+De início, para testarmos tanto abordagens de classificação como as de regressão, separamos os dados em dois bancos, um com a variável dependente contínua (`worldcont`) e outro com as variável dependente transformada em categórica (`worldcat`).
+
+A escolha por trabalhar tanto com modelos de regressão quanto com modelos de classificação para esses dados decorre de uma abordagem experimental e iterativa, com vistas a descobrir qual seria a maneira mais adequada de construir modelos preditivos sobre as viagens diplomáticas de líderes mundiais dessa forma. Não há literatura relevante que aborde esse tema a partir de modelos de *machine learning*.
+
+Como a variável dependente se refere à duração das viagens para cada ano e país analisados, trata-se de uma variável contínua, e para possibilitar o emprego de modelos de classificação, agrupamos os valores da variável dependente em quartis ordenados, de forma que a *label* "1" corresponde ao quartil de menor frequência de viagens, e a *label* "4" ao de maior frequência.
+
+Configuramos o banco de dados para a variável dependente categórica "`worldcat`":
+
+```{r message=FALSE}
+q1 <- quantile(world3$daysbyyear)
+
+worldcat <- world3 %>% 
+  mutate(`daysbyyear`= cut(daysbyyear, breaks = c(1,21,34,43,80), 
+labels = c("1","2","3","4"))) %>% 
+  mutate(across(c(election_year, lame_duck, coffice), ~ factor(.x)))
+```
+
+
+Configuramos o banco de líderes mundiais com a variável dependente contínua "worldcont":
+
+```{r}
+worldcont <- world3 %>%
+  group_by(country, s_year) %>%
+  mutate(across(c(election_year, lame_duck, coffice), ~ factor(.x)))
+
+worldcont
+```
+
+Estabelecemos três modelos de regressão a serem treinados: o primeiro compreende um algorítmo simples de regressão linear; o segundo, um algorítmo de regressão linear generalizada com *gradient boosting*; e o terceiro, um algoritmo de regressão com *Random Forest*, que faz predições com base no aprendizado conjunto realizado mediante o treino de sucessivas árvores de decisão aleatórias e de baixa correlação.
+
+Esses três modelos foram selecionados tomando por base a complexificação incremental dos métodos para predição utilizados por cada um deles. Esperamos que o modelo de *Random Forest* performe melhor, devido a sua característica inerente de combinar modelos preditivos em iterações sucessivas, próprio dos modelos desenvolvidos com base em técnicas de *ensemble*.
+
+```{r}
+task1 <- as_task_regr(daysbyyear ~ ., data = worldcont)
+
+reg1 <- po("learner", learner = lrn("regr.lm")) %>%
+  as_learner()
+
+reg2 <- po("scale") %>>%
+  po("learner", learner = lrn("regr.glmboost", family = "NBinomial")) %>%
+  as_learner()
+
+reg3 <- po("scale") %>>%
+  po("learner", learner = lrn("regr.randomForest", ntree = 250)) %>%
+  as_learner()
+```
+
+Treinamos os modelos e calculamos as métricas de validação:
+
+```{r message=FALSE}
+modelosregr <- function(){
+  design = benchmark_grid(
+  tasks = task1,
+  learners = list(reg1, reg2, reg3),
+  resamplings = rsmp("holdout", ratio = 0.7))
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("regr.rmse", "regr.mape", "regr.rsq", "regr.bias")))
+}
+
+resultadosregr <- 1:5 %>% 
+  map_df(~ modelosregr())
+```
+
+Performance dos modelos de Regression Learners:
+
+```{r echo=FALSE, fig.height=5, fig.width=12, message=FALSE, warning=FALSE}
+resultadosregr <- resultadosregr %>% 
+  select_if(is.numeric)
+
+resultadosregr%>% 
+  pivot_longer(3:5, names_to = "models", values_to = "result") %>% 
+  mutate(nr=case_when(nr=="1"~"Naive_bayes",
+                      nr=="2"~"Glmboost",
+                      nr=="3"~"RandomForest")) %>% 
+  ggplot(aes(x = result, y = models)) +
+  geom_boxplot(aes(fill = models), show.legend = FALSE, colour="gray") + 
+  facet_wrap(~nr)+
+  labs(x = " ",
+       y = " ",
+       title = "Performance dos Regression Learners")
+```
+
+Para os modelos de regressão analisados, e de acordo com as métricas de validação selecionadas, o segundo modelo (regressão linear generalizada com *gradient boosting*) performou consistentemente pior. O modelo de regressão linear simples e o modelo de regressão com *Random Forest* obtiveram resultados similares de maneira consistente, sendo que o primeiro tende a performar ligeiramente melhor, segundo as métricas avaliadas.
+
+Ainda assim, consideramos que os valores encontrados para as raízes dos erros quadráticos médios (***rmse***), métrica que calcula a raíz quadrada da média de diferença entre o valor predito com o valor real, são elevados para todos os modelos, mesmo que o coeficiente de determinação (***R²***) do primeiro e do último modelo performem consistentemente próximos do intervalo de 0.7-0.8, demonstrando que possuem uma capacidade de predição razoável sobre os dados reais.
+
+Em seguida, vamos observar os resultados obtidos mediante o emprego de modelos de classificação. Selecionamos três algorítmos de classificação: o primeiro realiza a predições de classificação com base no modelo *Naive Bayes*, que supõe independência e pesos iguais das features do banco; o segundo, realiza predições de classificação por árvores de decisão com *gradient boosting*, que comporta dados categóricos e propõe um modelo de árvores simétricas que são mais balanceadas, como forma de evitar *overfitting*; e o terceiro, realiza predições de classificação com base em *Random Forest* (treino de sucessivas árvores de decisão aleatórias e de baixa correlação).
+
+De maneira similar aos modelos utilizados para regressão anteriormente, esperamos que cada um desses modelos de classificação apresente capacidade incrementalmente melhor para realizar previsões que o anterior, tendo em vista as diferentes complexidades entre eles. Assim, estimamos que o *Random Forest* seja o melhor modelo entre os três.
+
+Modelos de classificação:
+
+```{r}
+task2 <- as_task_classif(daysbyyear ~ ., data = worldcat)
+
+classif1 <-
+  po("learner", learner = lrn("classif.naive_bayes")) %>%
+  as_learner()
+
+classif2 <- po("scale") %>>%
+  po("learner", learner = lrn("classif.catboost")) %>%
+  as_learner()
+
+classif3 <- po("scale") %>>%
+  po("learner", learner = lrn("classif.randomForest", ntree = 700)) %>%
+  as_learner()
+
+```
+
+Treinamos os modelos e calculamos as métricas de validação:
+
+```{r message=FALSE}
+modelosclassif <- function(){
+  design <- benchmark_grid(
+  tasks = task2,
+  learners = list(classif1, classif2, classif3),
+  resamplings = rsmp("holdout", ratio = 0.7))
+
+resultados <- benchmark(design)
+resultados$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
+}
+
+resultadosclassif <- 1:5 %>% 
+  map_df(~ modelosclassif())
+```
+
+Performance dos modelos de Classification Learners:
+
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+resultadosclassif <- resultadosclassif %>% 
+  select_if(is.numeric)
+
+resultadosclassif%>% 
+  pivot_longer(3:5, names_to = "models", values_to = "result") %>% 
+  mutate(nr=case_when(nr=="1"~"Naive_bayes",
+                      nr=="2"~"Catboost",
+                      nr=="3"~"RandomForest")) %>% 
+  ggplot(aes(x = result, y = models)) +
+  geom_boxplot(aes(fill = models), show.legend = FALSE, colour="gray") + 
+  facet_wrap(~nr)+
+  labs(x = " ",
+       y = " ",
+       title = "Performance dos Classification Learners")
+```
+
+Para as métricas de validação dos modelos de classificação, selecionamos a acurácia, a acurácia balanceada e o erro de classificação.
+
+As métricas de acurácia e acurácia balanceada tendem a ser similares, o que nos garante que as classes de falso positivo, falso negativo, verdadeiro positivo e verdadeiro negativo estejam balanceadas entre si. Os resultados dessas métricas, contudo, apontam para modelos demasiado limitados na capacidade de acertar previsões sobre a base de teste. Dentre os três modelos treinados e testados, o que obteve melhor performance de maneira consistente foi o modelo de classificação com base em Random Forest, cuja métrica de acurácia aponta para cerca de 70% de acertos nas previsões, e confirma nossa expectativa.
+
+### 4. Resultados e discussão
+
+#### 4.1 Validação com dados brasileiros
+
+Submetemos a base contendo os dados referentes às viagens de presidentes brasileiros ao mesmo tratamento da base de treino e teste. Em seguida, separamos os resultados reais da base, para que o modelo preveja a frequência de viagens no caso brasileiro de 2003 a 2022. Por fim, compararemos as previsões geradas pelos modelos com as informações reais.
+
+Para validarmos o modelo adequamos a base de validação externa, com os dados do Brasil dos anos de 2003 a 2022.
+
+```{r message=FALSE}
+brazil <- brazil %>% 
+  group_by(s_year, country) %>%
+  mutate("daysbyyear" = sum(`days`)) %>%
+  ungroup()
+
+brazil2 <- brazil %>% 
+  mutate(`meeting`= str_detect(`description`, "summit|Heads|Session|Forum|United Nations"),
+         `meeting`= case_when(`meeting`==T~1,
+                     `meeting`==F~0),
+         `coffice`=str_detect(`office`, "President"),
+         `coffice`= case_when(`coffice`==T~1,
+                     `coffice`==F~0))
+
+brazil2 <- brazil2 %>%
+  mutate(across(c(s_year, country), ~ factor(.x)))
+
+brazil3 <- brazil2 %>%
+  select(s_year, election_year,lame_duck, gdpcapita, external_balance, country, coffice, daysbyyear, meeting) %>% 
+  group_by(s_year, country) %>%
+  add_column(visitedcountries=1) %>% 
+  summarize(across(c(election_year,lame_duck, gdpcapita, external_balance, coffice, daysbyyear), mean, na.rm=TRUE),
+            `tmeeting`=sum(meeting, na.rm=TRUE),
+             `visitedcountries`=sum(visitedcountries, na.rm=TRUE))%>%
+  mutate(id = 1:n())
+```
+
+Configuramos o banco de líderes mundiais com a variável dependente categórica "worldcat":
+
+```{r message=FALSE}
+q2 <- quantile(brazil3$daysbyyear)
+brazil4 <- brazil3 %>% 
+  mutate(`daysbyyear`= cut(daysbyyear, breaks = c(7.5,22.5,35.0,52.0,82.0), 
+labels = c("1","2","3","4"))) %>% 
+  mutate(across(c(election_year, lame_duck, coffice), ~ factor(.x))) 
+
+brazilcat <- brazil4
+```
+
+Configuramos o banco de líderes mundiais com a variável dependente contínua "brazilcont":
+
+```{r message=FALSE}
+brazilcont <- brazil3 %>%
+  mutate(across(c(election_year, lame_duck, coffice), ~ factor(.x)))
+```
+
+Predição com Regression Leaners
+```{r message=FALSE}
+modelor1 <- benchmark_grid(
+  tasks = task1,
+  learners = list(reg1),
+  resamplings = rsmp("holdout", ratio = 0.7))
+
+resultados <- benchmark(modelor1)
+resultados$score(msrs(c("regr.rmse", "regr.mape", "regr.rsq", "regr.bias")))
+
+```
+
+
+
+```{r}
+# Predicao para o modelo com a variável dependente contínua
+predicaomodelo1 <- reg1$train(task1)
+pred1 <- predicaomodelo1$predict_newdata(brazilcont)
+pred1
+```
+
+
+```{r}
+# Confere validação com métricas de teste
+pred1$confusion
+pred2 <- pred1$score(msr("regr.rmse"))
+pred2
+```
+
+
+Predição com Classification Leaners
+
+```{r message=FALSE}
+modelor2 <- benchmark_grid(
+  tasks = task2,
+  learners = list(classif3),
+  resamplings = rsmp("holdout", ratio = 0.7))
+
+resultados2 <- benchmark(modelor2)
+resultados2$score(msrs(c("classif.acc", "classif.bacc", "classif.ce")))
+```
+
+```{r}
+# Predicao para o modelo com a variável dependente contínua
+predicaomodelo2 <- classif1$train(task2)
+pred2 <- predicaomodelo2$predict_newdata(brazilcat)
+pred2
+```
+
+
+
+#### 4.2  Considerações finais 
+
+
+O resultado das predições se demonstrou bastante satisfatório e condizente com as métricas de validação estimadas para cada modelo selecionado. Tanto o modelo de regressão quanto o de classificação foi capaz de realizar predições com boa taxa de acerto. Isso nos permite dizer que a tendência de frequência e volume de viagens realizadas por chefes de estado de diveros países do mundo fornece razoável capacidade preditiva do comportamento brasileiro em termos de viagens internacionais do chefe de estado. 
+
+Esses resultados colocam em cheque a análise sedimentada na literatura pertinente de que o volume de viagens realizado durante os dois mandatos do presidente Lula não seriam derivados de tendências mundiais, mas de disposições pessoais do presidente, individualmente, e seu voluntarismo no engajamento da inserção internacional do Brasil. Sendo assim, o que encontramos é que, na verdade, a tendência observada no caso do Brasil não se distinguiria muito da tendência mundial de realizar visitas oficiais e atender aos eventos e reuniões multilaterais. Destaca-se a tese já estabelecida na literatura internacional de que o período de 2009 a 2010, pós-crise econômica de 2008, foi marcado por intensificação de iniciativas e arranjos bilaterais e multilaterais de concertação entre os Estados.
+
+
+### 5. Dicionário de dados
+
+`daysbyyear` = total de dias viajados em um ano
+
+`country` = país [Brazil, Canada, China, France, Germany, India, Portugal, Russia, South Africa, Turkey, United Kingdom, United States]
+
+`s_year` = ano de referência [2000-2022]
+
+`election_year` = se houve eleição no ano [0,1]
+
+`lame_duck` = se o ano é um dos dois últimos anos de mandato de um líder que não concorrerá mais à reeleição [0,1]
+
+`gdpcapita` = PIB per capita [em dólares]
+
+`external_balance` = balança comercial [em % do PIB]
+
+`tmeeting` = total de viagens com reuniões multilaterais
+
+`visitedcountries` = quantidade de países diferentes visitados
+
+`coffice` = se o líder é chefe de estado ou não [0,1]
+
+### 6. Referências
+
+Brace, Paul, and Barbara' Hinckley. 1993. "Presidential Activities from Truman through Reagan: Timing and Impact." *The Journal of Politics* 55(2): 382--98.
+
+Cason, Jeffrey W., and Timothy J. Power. 2009. "Presidentialization, Pluralization, and the Rollback of Itamaraty: Explaining Change in Brazilian Foreign Policy Making in the Cardoso-Lula Era." *International Political Science Review* 30(2): 117--40.
+
+Cavari, Amnon, and Micah Ables. 2019. "Going Global: Assessing Presidential Foreign Travel." *Congress and the Presidency* 46(2): 306--29.
+
+Charnock, Emily J., James A. Mccann, and Kathryn Dunn Tenpas. 2012. ", 1957-2009." *Issues in Governance Studies* (54): 1--11.
+
+Danese, Sérgio França. 1999. *Diplomacia Presidencial: História e Crítica*. Topbooks.
+
+Doherty, Bendan J. 2009. "POTUS on the Road: International and Domestic Presidential Travel, 1977-2005." *Presidential Studies Quarterly* 39(2): 322--46.
+
+Figueira, Ariane Cristine Roder. 2010. "Um Debate Acerca Do Padrão Decisório Em Política Externa No Brasil." *Carta Internacional* (7): 38--52.
+
+Gonçalves, Reinaldo. 2017. "Política Externa, Viagens Internacionais Do Presidente Lula e Comércio Exterior: O Fiasco Do Caixeiro-Viajante." *Ie-Ufrj Discussion Paper*: 1--38.
+
+Guilhon Albuquerque, José Augusto. 1996. "A Presidência Na Linha de Frente Da Diplomacia." *Carta Internacional* 4(35).
+
+Lebovic, James H., and Elizabeth N. Saunders. 2016. "The Diplomatic Core: The Determinants of High-Level US Diplomatic Visits, 1946--2010." *International Studies Quarterly* 60(1): 107--23.
+
+Pinheiro, Letícia. 2009. "Autores y Actores de La Política Exterior Brasileña." *Foreign affairs: Latinoamérica* 9(2): 14--24.
+
+Preto, Alessandra Falcão. 2006. "O Conceito de Diplomacia Presidencial: O Papel Da Presidência Da República Na Formulação de Política Externa." *Dissertação*: 101.
+
+Ribas, Letícia Diniz, and Carlos Aurélio Pimenta de Faria. 2011. *A Política Externa Vista Da Janela Do Avião: A Diplomacia Presidencial Nos Governos FHC e Lula.* São Paulo.
